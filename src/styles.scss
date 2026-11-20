@@ -1,1 +1,11 @@
-/* You can add global styles to this file, and also import other style files */
+:root { --brand: #001430; }
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: Inter, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+}
+h1 { margin: 0 0 24px; font-size: 28px; }
+.u-flex { display: flex; }
+.u-grid { display: grid; }
