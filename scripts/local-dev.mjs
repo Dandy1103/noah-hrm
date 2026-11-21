@@ -163,12 +163,17 @@ async function main() {
     const java = await selectJava();
     const externalFile = join(root, '.env.local');
     const external = existsSync(externalFile) ? parseEnv(readFileSync(externalFile, 'utf8')) : {};
-    let configuration = external;
+    let configuration;
     if (external.OIDC_ISSUER_URL) {
-        for (const name of ['OIDC_CLIENT_ID', 'OIDC_CLIENT_SECRET', 'HRM_KEYCLOAK_CLIENT_ID',
-            'HRM_KEYCLOAK_CLIENT_SECRET', 'DATABASE_URL', 'HRM_ADMIN_SUBJECT']) {
+        for (const name of ['OIDC_CLIENT_ID', 'OIDC_CLIENT_SECRET']) {
             if (!external[name]) throw new Error(".env.local 缺少 " + name + "。");
         }
+        configuration = {
+            HRM_ADMIN_SUBJECT: '',
+            HRM_KEYCLOAK_CLIENT_ID: '',
+            HRM_KEYCLOAK_CLIENT_SECRET: '',
+            ...external,
+        };
     } else {
         const docker = dockerCommand();
         run(process.execPath, ['keycloak/create-local-env.mjs']);
