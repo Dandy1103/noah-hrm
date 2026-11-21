@@ -17,11 +17,10 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
+import org.flywaydb.core.Flyway;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -74,7 +73,13 @@ final class Employees {
         }
         source = new HikariDataSource(databaseConfig(settings.databaseUrl));
         try {
-            new ResourceDatabasePopulator(new ClassPathResource("employees.sql")).execute(source);
+            Flyway.configure()
+                    .dataSource(source)
+                    .defaultSchema("public")
+                    .baselineOnMigrate(true)
+                    .baselineVersion("0")
+                    .load()
+                    .migrate();
         } catch (RuntimeException error) {
             source.close();
             throw error;

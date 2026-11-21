@@ -12,6 +12,14 @@ npm start
 
 自行指定本機網頁 port 時，在 PowerShell 設定 $env:HRM_PORT = "4202" 再執行 npm start。使用預設的本機 Keycloak 時，啟動程式會登錄相符的回呼。後端 port 可用 HRM_BACKEND_PORT 設定。
 
+## 資料庫遷移
+
+HRM 啟動時會對設定的 PostgreSQL 執行 Flyway 遷移。如果只想更新結構，或要在全新的資料庫先啟動 Portal，在 `noah-hrm` 執行 `npm run db:migrate`。這個指令不會啟動 HRM 網站。
+
+變更員工或部門資料表時，在 [資料庫遷移目錄](backend/src/main/resources/db/migration) 新增下一個版本的 SQL，例如 `V2__add_employee_extension.sql`，和功能一起提交。已套用的遷移檔保留原樣，後續修正另開新版本。Git 管理遷移 SQL 和可重建的測試資料，員工資料、資料庫備份及憑證留在各自的環境。
+
+Railway 可在 **HRM → Settings → Deploy → Pre-deploy Command** 填入 `java -jar noah-hrm.jar migrate`。如果同一版也改到 Portal 的資料查詢，先部署 HRM 並確認遷移成功，再部署 Portal。 [Railway 部署前指令](https://docs.railway.com/deployments/pre-deploy-command)
+
 ## 共用測試環境
 
 如果團隊有共用 Keycloak 和 PostgreSQL，把 .env.local.example 複製成 .env.local，再填入該環境的設定。HRM 用自己的機密 OIDC client，啟用 Standard Flow 和 PKCE S256，允許 http://localhost:4201/auth/callback，換 port 時一併換回呼。帳號管理 client 需啟用服務帳號並授予 realm-management 的 manage-users。HRM_ADMIN_SUBJECT 填有員工管理權限的 Keycloak 使用者 ID。Portal 與 HRM 若使用同一個 realm，可沿用瀏覽器的 Keycloak 登入狀態。

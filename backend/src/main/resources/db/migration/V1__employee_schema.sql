@@ -44,16 +44,6 @@ ALTER TABLE employees ADD CONSTRAINT employees_manager_not_self
 
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS born_on DATE;
 
-UPDATE employees
-SET born_on = (hired_on - make_interval(years => 22 + (abs(hashtext(employee_number)::bigint) % 16)::int,
-                                        days => (abs(hashtext(employee_number || ':born')::bigint) % 300)::int))::date
-WHERE born_on IS NULL AND hired_on IS NOT NULL AND employment_type IS DISTINCT FROM 'intern';
-
-UPDATE employees
-SET born_on = (hired_on - make_interval(years => 20 + (abs(hashtext(employee_number)::bigint) % 3)::int,
-                                        days => (abs(hashtext(employee_number || ':born')::bigint) % 200)::int))::date
-WHERE born_on IS NULL AND hired_on IS NOT NULL AND employment_type = 'intern';
-
 INSERT INTO departments (name)
 SELECT DISTINCT btrim(department)
 FROM employees

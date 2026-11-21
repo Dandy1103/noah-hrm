@@ -154,11 +154,14 @@ function portSetting(name, fallback) {
 }
 
 async function main() {
+    const migrateOnly = process.argv.includes('--migrate');
     const port = portSetting('HRM_BACKEND_PORT', 3001);
     const frontend = portSetting('HRM_PORT', 4201);
-    if (port === frontend) throw new Error("HRM 前端和後端需要使用不同的 port。");
-    for (const wanted of [port, frontend]) {
-        if (await listening(wanted)) throw new Error(wanted + " 已被使用，請先停止原本的服務。");
+    if (!migrateOnly) {
+        if (port === frontend) throw new Error("HRM 前端和後端需要使用不同的 port。");
+        for (const wanted of [port, frontend]) {
+            if (await listening(wanted)) throw new Error(wanted + " 已被使用，請先停止原本的服務。");
+        }
     }
     const java = await selectJava();
     const externalFile = join(root, '.env.local');
@@ -179,7 +182,6 @@ async function main() {
         run(process.execPath, ['keycloak/create-local-env.mjs']);
         configuration = await startLocalIdentity(docker, root, parseEnv(readFileSync(envFile, 'utf8')), 'noah-hrm', frontend);
     }
-    installFrontend(root);
     const env = {
         ...process.env,
         ...configuration,
@@ -191,9 +193,16 @@ async function main() {
         SERVER_ADDRESS: '127.0.0.1',
         DEBUG: 'false',
     };
-    const processes = [windows
-        ? launch('cmd.exe', ['/d', '/c', 'mvnw.cmd', '-Dmaven.repo.local=tmp/java-tools/m2', 'spring-boot:run'], env)
-        : launch('sh', ['./mvnw', '-Dmaven.repo.local=tmp/java-tools/m2', 'spring-boot:run'], env)];
+    const mavenArgs = ['-Dmaven.repo.local=tmp/java-tools/m2', 'spring-boot:run'];
+    const maven = windows ? 'cmd.exe' : 'sh';
+    const mavenPrefix = windows ? ['/d', '/c', 'mvnw.cmd'] : ['./mvnw'];
+    if (migrateOnly) {
+        run(maven, [...mavenPrefix, ...mavenArgs, '-Dspring-boot.run.arguments=migrate'], { env });
+        return;
+    }
+
+    installFrontend(root);
+    const processes = [launch(maven, [...mavenPrefix, ...mavenArgs], env)];
     processes.push(launch(process.execPath, ['node_modules/@angular/cli/bin/ng.js',
         'serve', '--host', 'localhost', '--port', String(frontend), '--proxy-config', 'proxy.conf.mjs'], env));
 

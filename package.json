@@ -4,6 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "node scripts/local-dev.mjs",
+    "db:migrate": "node scripts/local-dev.mjs --migrate",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
