@@ -1,145 +1,335 @@
-<header class="header u-flex">
-  <strong>{{ title }}</strong>
-  @if (mountedInPortal) { <a href="/">回 Portal</a> }
-    @if (access() === 'allowed' || access() === 'denied') {
-    <a class="secondary" [href]="changePasswordUrl">變更密碼</a>
+<app-header
+  [displayName]="displayName()"
+  [signedIn]="access() === 'allowed' || access() === 'denied'"
+  [mountedInPortal]="mountedInPortal"
+  [changePasswordUrl]="changePasswordUrl"
+/>
+
+@switch (access()) {
+  @case ('loading') { <main class="gate"><p>正在確認權限。</p></main> }
+  @case ('signed-out') {
+    <main class="gate">
+      <section class="panel">
+        @if (signInError === 'unavailable') {
+          <p class="error" role="alert">目前無法連線到登入服務，請稍後再試。</p>
+        } @else if (signInError === 'signin') {
+          <p class="error" role="alert">登入未完成，請再試一次。</p>
+        } @else {
+          <p>登入後才能使用 Noah HRM。</p>
+        }
+        <a class="text-link" [href]="loginUrl">重新登入</a>
+      </section>
+    </main>
   }
-  @if (!mountedInPortal && (access() === 'allowed' || access() === 'denied')) {
-      <form action="/auth/logout" method="post"><button class="secondary" type="submit">登出</button></form>
-    }
-</header>
+  @case ('denied') { <main class="gate"><section class="panel"><p>請用有人資權限的帳號登入。</p></section></main> }
+  @case ('unavailable') { <main class="gate"><section class="panel"><p class="error" role="alert">{{ accessError() }}</p></section></main> }
+  @case ('allowed') {
+    <div class="shell">
+      <nav class="sidenav" aria-label="功能">
+        <button type="button" [class.is-active]="section() === 'employees'" [attr.aria-current]="section() === 'employees' ? 'page' : null" (click)="showEmployees()">員工</button>
+        <button type="button" [class.is-active]="section() === 'organization'" [attr.aria-current]="section() === 'organization' ? 'page' : null" (click)="showOrganization()">組織</button>
+        <button type="button" class="is-later" [class.is-active]="section() === 'attendance'" [attr.aria-current]="section() === 'attendance' ? 'page' : null" (click)="showLater('attendance')">出勤<span>尚未開放</span></button>
+        <button type="button" class="is-later" [class.is-active]="section() === 'leave'" [attr.aria-current]="section() === 'leave' ? 'page' : null" (click)="showLater('leave')">請假<span>尚未開放</span></button>
+      </nav>
 
-<main>
-  <h1>員工帳號</h1>
+      <main class="workspace">
+        @if (message()) { <p class="notice" role="status">{{ message() }}</p> }
+        @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+        @if ((section() === 'employees' || section() === 'organization') && peopleError()) {
+          <p class="error" role="alert">{{ peopleError() }}</p>
+        }
 
-  @switch (access()) {
-    @case ('loading') { <p>正在確認權限。</p> }
-    @case ('signed-out') {
-      @if (signInError === 'unavailable') {
-        <p role="alert">目前無法連線到登入服務，請稍後再試。</p>
-      } @else if (signInError === 'signin') {
-        <p role="alert">登入未完成，請再試一次。</p>
-      }
-      <a [href]="loginUrl">重新登入</a>
-    }
-    @case ('denied') { <p>請用有帳號管理權限的帳號登入。</p> }
-    @case ('unavailable') { <p role="alert">{{ accessError() }}</p> }
-    @case ('allowed') {
-      <div class="toolbar u-flex">
-        <form class="search u-flex" (ngSubmit)="search()">
-          <label class="search-field">
-            <span>查詢帳號</span>
-            <input [formControl]="query" type="search" maxlength="100" placeholder="員工編號、姓名、部門或電子郵件">
-          </label>
-          <button type="submit" class="secondary" [disabled]="loading()">查詢</button>
-        </form>
-        <button type="button" (click)="openEditor()" [disabled]="saving()">新增帳號</button>
-      </div>
-
-      @if (message()) { <p role="status">{{ message() }}</p> }
-      @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-
-      @if (editor(); as edit) {
-        <section class="panel" aria-labelledby="account-editor">
-          <h2 id="account-editor">{{ edit === 'create' ? '新增帳號' : '修改帳號' }}</h2>
-          <form class="editor u-grid" [formGroup]="form" (ngSubmit)="save()">
-            <label>員工編號
-              <input formControlName="employeeNumber" maxlength="32" autocomplete="off" required>
-            </label>
-            <label>{{ edit === 'create' ? '身分證字號' : '新身分證字號' }}
-              <input formControlName="nationalId" maxlength="10" autocomplete="off" spellcheck="false"
-                     [attr.required]="edit === 'create' ? '' : null">
-              @if (form.controls.nationalId.touched && form.controls.nationalId.hasError('pattern')) {
-                <span class="hint">請輸入 1 個英文字母和 9 個數字。</span>
-              } @else if (edit !== 'create') {
-                <span class="hint">留空會沿用原本的登入帳號。</span>
-              }
-            </label>
-            <label>部門
-              <input formControlName="department" maxlength="100" required>
-            </label>
-            <label>姓氏
-              <input formControlName="lastName" maxlength="48" required>
-            </label>
-            <label>名字
-              <input formControlName="firstName" maxlength="48" required>
-            </label>
-            <label>電子郵件
-              <input formControlName="email" type="email" maxlength="254" required>
-            </label>
-            @if (edit === 'create') {
-              <label>初始密碼
-                <input formControlName="initialPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
-                <span class="hint">至少 12 個字元，員工首次登入時需更改。</span>
-              </label>
-            }
-            @if (form.controls.employeeNumber.touched && form.controls.employeeNumber.hasError('pattern')) {
-              <p class="hint">員工編號以英文字母或數字開頭，可用連字號和底線。</p>
-            }
-            <div class="actions u-flex">
-              <button type="submit" [disabled]="form.invalid || saving()">{{ saving() ? '儲存中…' : '儲存' }}</button>
-              <button type="button" class="secondary" (click)="closeEditor()" [disabled]="saving()">取消</button>
-            </div>
-          </form>
-        </section>
-      }
-
-      @if (disableTarget(); as account) {
-        <section class="panel" aria-labelledby="account-disable">
-          <h2 id="account-disable">停用 {{ account.employeeNumber }} {{ account.displayName }}？</h2>
-          <p>停用後，這個帳號無法登入。之後可以在這裡恢復。</p>
-          <div class="actions u-flex">
-            <button type="button" class="danger" (click)="disable()" [disabled]="saving()">確認停用</button>
-            <button type="button" class="secondary" (click)="disableTarget.set(null)" [disabled]="saving()">取消</button>
-          </div>
-        </section>
-      }
-
-      @if (listError()) {
-        <p class="error" role="alert">{{ listError() }}</p>
-      } @else if (loading()) {
-        <p role="status">讀取帳號中…</p>
-      } @else if (accounts().length === 0) {
-        <p>沒有符合的帳號。</p>
-      } @else {
-        <div class="table-wrap">
-          <table aria-label="員工帳號">
-            <thead>
-              <tr><th scope="col">員工編號</th><th scope="col">姓名</th><th scope="col">部門</th>
-                <th scope="col">電子郵件</th><th scope="col">狀態</th><th scope="col">操作</th></tr>
-            </thead>
-            <tbody>
-              @for (account of accounts(); track account.employeeNumber) {
-                <tr>
-                  <td>{{ account.employeeNumber }}</td><td>{{ account.displayName }}</td>
-                  <td>{{ account.department }}</td><td>{{ account.email || '—' }}</td>
-                  <td>{{ account.status === 'inactive' ? '已停用' : '啟用中' }}</td>
-                  <td>
-                    @if (account.editable) {
-                      <div class="actions u-flex">
-                        <button type="button" class="secondary" (click)="openEditor(account)" [disabled]="saving()">修改</button>
-                        @if (account.status === 'active') {
-                          <button type="button" class="secondary" (click)="confirmDisable(account)" [disabled]="saving()">停用</button>
-                        } @else {
-                          <button type="button" class="secondary" (click)="restore(account)" [disabled]="saving()">恢復</button>
-                        }
-                      </div>
-                    } @else {
-                      {{ account.managed ? '目前登入帳號' : '已連結' }}
+        @if (section() === 'employees') {
+          @if (editor(); as edit) {
+            <div class="record">
+              <div class="page-head">
+                <h1>{{ edit === 'create' ? '新增員工' : edit.displayName }}</h1>
+                @if (edit !== 'create') { <p>{{ edit.employeeNumber }}</p> }
+              </div>
+              <section class="panel">
+                <form class="editor u-grid" [formGroup]="form" (ngSubmit)="save()">
+                  <noah-field>員工編號
+                    <input formControlName="employeeNumber" maxlength="32" autocomplete="off" required>
+                  </noah-field>
+                  <noah-field>{{ edit === 'create' ? '身分證字號' : '新身分證字號' }}
+                    <input formControlName="nationalId" maxlength="10" autocomplete="off" spellcheck="false"
+                           [attr.required]="edit === 'create' ? '' : null">
+                    @if (form.controls.nationalId.touched && form.controls.nationalId.hasError('pattern')) {
+                      <span class="hint">請輸入 1 個英文字母和 9 個數字。</span>
+                    } @else if (edit !== 'create') {
+                      <span class="hint">留空會沿用原本的登入帳號。</span>
                     }
-                  </td>
-                </tr>
+                  </noah-field>
+                  <noah-field>部門
+                    <select formControlName="departmentId" required>
+                      <option value="" disabled>選擇部門</option>
+                      @for (department of departments(); track department.departmentId) {
+                        <option [value]="department.departmentId">{{ department.name }}</option>
+                      }
+                    </select>
+                    @if (departments().length === 0) {
+                      <span class="hint">請先到「組織」建立部門，再新增員工。</span>
+                    }
+                  </noah-field>
+                  <noah-field>職稱
+                    <input formControlName="jobTitle" maxlength="100" required>
+                  </noah-field>
+                  <noah-field>到職日
+                    <input formControlName="hiredOn" type="date" required>
+                    @if (form.controls.hiredOn.value) {
+                      <span class="hint">年資 {{ tenureLabel(form.controls.hiredOn.value) }}</span>
+                    }
+                  </noah-field>
+                  <noah-field>生日
+                    <input formControlName="bornOn" type="date" required>
+                  </noah-field>
+                  <noah-field>雇用型態
+                    <select formControlName="employmentType" required>
+                      <option value="" disabled>選擇雇用型態</option>
+                      @for (type of employmentTypes; track type.value) {
+                        <option [value]="type.value">{{ type.label }}</option>
+                      }
+                    </select>
+                  </noah-field>
+                  <noah-field>權限
+                    <select formControlName="role" required>
+                      @for (role of roles; track role.value) {
+                        <option [value]="role.value">{{ role.label }}</option>
+                      }
+                    </select>
+                    @if (edit !== 'create' && edit.self) {
+                      <span class="hint">這是你的帳號。可以改資料和權限，不能停用自己。至少要留一位人資。</span>
+                    }
+                  </noah-field>
+                  <noah-field>直屬主管
+                    <select formControlName="managerEmployeeNumber">
+                      <option value="">無</option>
+                      @for (person of managerOptions(); track person.employeeNumber) {
+                        <option [value]="person.employeeNumber">{{ person.displayName }}（{{ person.employeeNumber }}）{{ person.status === 'inactive' ? '，已停用' : '' }}</option>
+                      }
+                    </select>
+                  </noah-field>
+                  <noah-field>姓氏
+                    <input formControlName="lastName" maxlength="48" required>
+                  </noah-field>
+                  <noah-field>名字
+                    <input formControlName="firstName" maxlength="48" required>
+                  </noah-field>
+                  <noah-field>電子郵件
+                    <input formControlName="email" type="email" maxlength="254" required>
+                  </noah-field>
+                  @if (edit === 'create') {
+                    <noah-field>初始密碼
+                      <input formControlName="initialPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+                      <span class="hint">至少 12 個字元，員工首次登入時需更改。</span>
+                    </noah-field>
+                  }
+                  @if (form.controls.employeeNumber.touched && form.controls.employeeNumber.hasError('pattern')) {
+                    <p class="hint">員工編號以英文字母或數字開頭，可用連字號和底線。</p>
+                  }
+                  <div class="actions u-flex">
+                    <noah-button type="submit" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="form.invalid || saving()"></noah-button>
+                    <noah-button type="button" variant="secondary" message="取消" (click)="closeEditor()" [disabled]="saving()"></noah-button>
+                  </div>
+                </form>
+              </section>
+            </div>
+          } @else if (selectedAccount()) {
+            @if (selectedAccount(); as account) {
+            <div class="record">
+              <button type="button" class="back" (click)="closePerson()">回員工名單</button>
+              <div class="person-head">
+                <div class="page-head">
+                  <h1>{{ account.displayName }}</h1>
+                  <p>{{ account.employeeNumber }}</p>
+                </div>
+                <span class="status" [class.status--off]="account.status === 'inactive'">{{ account.status === 'inactive' ? '已停用' : '在職' }}</span>
+              </div>
+              @if (disableTarget(); as target) {
+                <section class="panel">
+                  <h2>停用 {{ target.displayName }}？</h2>
+                  <p>停用後無法登入。之後可以在這裡恢復。</p>
+                  <div class="actions u-flex">
+                    <noah-button type="button" variant="danger" message="確認停用" (click)="disable()" [disabled]="saving()"></noah-button>
+                    <noah-button type="button" variant="secondary" message="取消" (click)="disableTarget.set(null)" [disabled]="saving()"></noah-button>
+                  </div>
+                </section>
+              } @else {
+                <dl class="facts">
+                  <div><dt>部門</dt><dd>{{ account.department || '—' }}</dd></div>
+                  <div><dt>職稱</dt><dd>{{ account.jobTitle || '—' }}</dd></div>
+                  <div><dt>雇用型態</dt><dd>{{ employmentLabel(account.employmentType) }}</dd></div>
+                  <div><dt>到職日</dt><dd>{{ formatDate(account.hiredOn) }}@if (account.hiredOn) {（{{ tenureLabel(account.hiredOn) }}）}</dd></div>
+                  <div><dt>生日</dt><dd>{{ formatDate(account.bornOn) }}</dd></div>
+                  <div><dt>直屬主管</dt><dd>{{ account.managerName || '—' }}</dd></div>
+                  <div><dt>權限</dt><dd>{{ roleLabel(account.role) }}</dd></div>
+                  <div><dt>電子郵件</dt><dd>{{ account.email || '—' }}</dd></div>
+                </dl>
+                @if (account.editable) {
+                  <div class="actions u-flex">
+                    <noah-button type="button" message="修改" (click)="openEditor(account)" [disabled]="saving()"></noah-button>
+                    @if (!account.self && account.status === 'active') {
+                      <noah-button type="button" variant="secondary" message="停用" (click)="confirmDisable(account)" [disabled]="saving()"></noah-button>
+                    } @else if (!account.self) {
+                      <noah-button type="button" variant="secondary" message="恢復" (click)="restore(account)" [disabled]="saving()"></noah-button>
+                    }
+                  </div>
+                } @else {
+                  <p class="hint">這個帳號是另外連結的，不能在這裡修改。</p>
+                }
               }
-            </tbody>
-          </table>
-        </div>
-      }
-      @if (offset() || hasMore()) {
-        <div class="pagination actions u-flex">
-          <button type="button" class="secondary" (click)="loadAccounts(offset() - pageSize())" [disabled]="!offset() || loading()">上一頁</button>
-          <button type="button" class="secondary" (click)="loadAccounts(offset() + pageSize())" [disabled]="!hasMore() || loading()">下一頁</button>
-        </div>
-      }
-    }
+            </div>
+            }
+          } @else if (selectedNumber()) {
+            <button type="button" class="back" (click)="closePerson()">回員工名單</button>
+            <p class="empty">這筆員工資料不在目前的名單裡。</p>
+          } @else {
+            <div class="page-head">
+              <h1>員工</h1>
+              @if (rosterSummary()) { <p>{{ rosterSummary() }}</p> }
+            </div>
+            <div class="toolbar u-flex">
+              <form class="search u-flex" (ngSubmit)="search()">
+                <noah-field class="search-field">
+                  <span>查詢員工</span>
+                  <input [formControl]="query" type="search" maxlength="100" placeholder="員工編號、姓名、部門、職稱或電子郵件">
+                </noah-field>
+                <noah-button type="submit" variant="secondary" message="查詢" [disabled]="loading()"></noah-button>
+              </form>
+              <noah-button type="button" message="新增員工" (click)="openEditor()" [disabled]="saving()"></noah-button>
+            </div>
+            @if (listError()) {
+              <p class="error" role="alert">{{ listError() }}</p>
+            } @else if (loading()) {
+              <p class="empty" role="status">讀取員工中…</p>
+            } @else if (accounts().length === 0) {
+              <p class="empty">沒有符合的員工。</p>
+            } @else {
+              <noah-table>
+                <table aria-label="員工">
+                  <thead>
+                    <tr>
+                      <th scope="col">員工編號</th>
+                      <th scope="col">姓名</th>
+                      <th scope="col">部門</th>
+                      <th scope="col">職稱</th>
+                      <th scope="col">狀態</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (account of accounts(); track account.employeeNumber) {
+                      <tr>
+                        <td>{{ account.employeeNumber }}</td>
+                        <td><button type="button" class="person-link" (click)="openPerson(account)">{{ account.displayName }}</button></td>
+                        <td>{{ account.department || '—' }}</td>
+                        <td>{{ account.jobTitle || '—' }}</td>
+                        <td><span class="status" [class.status--off]="account.status === 'inactive'">{{ account.status === 'inactive' ? '已停用' : '在職' }}</span></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </noah-table>
+            }
+            @if (offset() || hasMore()) {
+              <div class="pagination actions u-flex">
+                <noah-button type="button" variant="secondary" message="上一頁" (click)="loadAccounts(offset() - pageSize())" [disabled]="!offset() || loading()"></noah-button>
+                <noah-button type="button" variant="secondary" message="下一頁" (click)="loadAccounts(offset() + pageSize())" [disabled]="!hasMore() || loading()"></noah-button>
+              </div>
+            }
+          }
+        } @else if (section() === 'organization') {
+          <div class="page-head">
+            <h1>組織</h1>
+            @if (departments().length) { <p>{{ departments().length }} 個部門</p> }
+          </div>
+          <div class="toolbar u-flex">
+            <noah-button class="u-ml-auto" type="button" message="新增部門" (click)="openDepartmentEditor()" [disabled]="saving()"></noah-button>
+          </div>
+          @if (departmentEditor(); as edit) {
+            <section class="panel record">
+              <h2>{{ edit === 'create' ? '新增部門' : '修改部門' }}</h2>
+              <form class="editor u-grid" [formGroup]="departmentForm" (ngSubmit)="saveDepartment()">
+                <noah-field>部門名稱
+                  <input formControlName="name" maxlength="100" required>
+                </noah-field>
+                <noah-field>上層部門
+                  <select formControlName="parentDepartmentId">
+                    <option value="">無</option>
+                    @for (department of parentOptions(); track department.departmentId) {
+                      <option [value]="department.departmentId">{{ department.name }}</option>
+                    }
+                  </select>
+                </noah-field>
+                <noah-field>部門主管
+                  <select formControlName="headEmployeeNumber">
+                    <option value="">不指定</option>
+                    @for (person of people(); track person.employeeNumber) {
+                      <option [value]="person.employeeNumber">{{ person.displayName }}（{{ person.employeeNumber }}）{{ person.status === 'inactive' ? '，已停用' : '' }}</option>
+                    }
+                  </select>
+                </noah-field>
+                <div class="actions u-flex">
+                  <noah-button type="submit" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="departmentForm.invalid || saving()"></noah-button>
+                  <noah-button type="button" variant="secondary" message="取消" (click)="closeDepartmentEditor()" [disabled]="saving()"></noah-button>
+                </div>
+              </form>
+            </section>
+          }
+          @if (deleteDepartmentTarget(); as department) {
+            <section class="panel record">
+              <h2>刪除 {{ department.name }}？</h2>
+              <p>刪除後無法復原。仍有員工或下層部門時不能刪。</p>
+              <div class="actions u-flex">
+                <noah-button type="button" variant="danger" message="確認刪除" (click)="deleteDepartment()" [disabled]="saving()"></noah-button>
+                <noah-button type="button" variant="secondary" message="取消" (click)="deleteDepartmentTarget.set(null)" [disabled]="saving()"></noah-button>
+              </div>
+            </section>
+          }
+          @if (departmentListError()) {
+            <p class="error" role="alert">{{ departmentListError() }}</p>
+          } @else if (departmentLoading()) {
+            <p class="empty" role="status">讀取部門中…</p>
+          } @else if (departments().length === 0) {
+            <p class="empty">還沒有部門。</p>
+          } @else {
+            <noah-table>
+              <table aria-label="部門">
+                <thead>
+                  <tr>
+                    <th scope="col">部門</th>
+                    <th scope="col">主管</th>
+                    <th scope="col">人數</th>
+                    <th scope="col">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of organizationRows(); track row.department.departmentId) {
+                    <tr>
+                      <td><span class="org-name" [style.margin-left.px]="row.depth * 20">{{ row.department.name }}</span></td>
+                      <td>{{ row.department.headName || '—' }}</td>
+                      <td>{{ row.department.employeeCount }}</td>
+                      <td>
+                        <div class="actions u-flex">
+                          <noah-button type="button" variant="secondary" message="修改" (click)="openDepartmentEditor(row.department)" [disabled]="saving()"></noah-button>
+                          @if (canDeleteDepartment(row.department)) {
+                            <noah-button type="button" variant="secondary" message="刪除" (click)="confirmDeleteDepartment(row.department)" [disabled]="saving()"></noah-button>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </noah-table>
+          }
+        } @else if (section() === 'attendance') {
+          <div class="page-head"><h1>出勤</h1></div>
+          <p class="empty">出勤尚未開放。</p>
+        } @else {
+          <div class="page-head"><h1>請假</h1></div>
+          <p class="empty">請假尚未開放。</p>
+        }
+      </main>
+    </div>
   }
-</main>
+}

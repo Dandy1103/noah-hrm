@@ -4,6 +4,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY angular.json tsconfig.json tsconfig.app.json ./
 COPY src ./src
+COPY keycloak/logo.png ./keycloak/logo.png
 RUN npm run build
 
 FROM maven:3.9.11-eclipse-temurin-21 AS backend

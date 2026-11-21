@@ -24,6 +24,24 @@ function run(command, args, options = {}) {
     if (result.error || result.status !== 0) throw new Error(command + ' 執行失敗，請查看上方訊息。');
 }
 
+function ensureDemoEmployee(docker, configuration) {
+    const url = new URL(configuration.DATABASE_URL);
+    if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return;
+    const issuer = configuration.OIDC_ISSUER_URL;
+    const subject = configuration.HRM_ADMIN_SUBJECT;
+    if (!issuer || !subject || issuer.includes("'") || subject.includes("'")) return;
+    const database = decodeURIComponent(url.pathname.replace(/^\//, ''));
+    const user = decodeURIComponent(url.username);
+    const sql = [
+        "INSERT INTO departments (name) VALUES ('資訊部') ON CONFLICT (name) DO NOTHING;",
+        "INSERT INTO employees (employee_number, display_name, department, department_id, status, oidc_issuer, oidc_subject, managed_account, first_name, last_name, email, role)",
+        "SELECT 'E00001', '員工測試', '資訊部', department_id, 'active', '" + issuer + "', '" + subject + "', true, '測試', '員工', 'e00123@example.test', 'admin'",
+        "FROM departments WHERE name = '資訊部'",
+        "AND NOT EXISTS (SELECT 1 FROM employees WHERE oidc_issuer = '" + issuer + "' AND oidc_subject = '" + subject + "');",
+    ].join(' ');
+    run(docker, ['exec', 'keycloak-portal-db-1', 'psql', '-U', user, '-d', database, '-v', 'ON_ERROR_STOP=1', '-c', sql]);
+}
+
 function dockerCommand() {
     const candidates = windows ? [
         process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, 'Programs', 'DockerDesktop', 'resources', 'bin', 'docker.exe'),
@@ -182,6 +200,7 @@ async function main() {
         firstExit.then(() => null),
     ]).finally(() => startup.abort());
     if (!ready) throw new Error('服務提前停止，請查看 Maven 或 Angular 的訊息。');
+    if (!external.OIDC_ISSUER_URL) ensureDemoEmployee(dockerCommand(), configuration);
     console.log('開啟 http://localhost:' + frontend + '/');
     if (!external.OIDC_ISSUER_URL) console.log('本機測試帳號 ' + demoLogin.toUpperCase() + '，初始密碼在 .env.shared-keycloak 的 KEYCLOAK_DEMO_PASSWORD。');
     process.exitCode = await firstExit;

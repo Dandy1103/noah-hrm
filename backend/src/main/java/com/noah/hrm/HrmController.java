@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,6 +134,11 @@ final class HrmController {
                 .orElse(MediaType.APPLICATION_OCTET_STREAM)).body(new FileSystemResource(file));
     }
 
+    @GetMapping("/api/session")
+    Map<String, String> session(HttpServletRequest request, HttpServletResponse response) {
+        return Map.of("displayName", requireUser(request, response).displayName());
+    }
+
     @GetMapping("/api/hrm/access")
     ResponseEntity<Void> access(HttpServletRequest request, HttpServletResponse response) {
         requireHrmAdmin(request, response);
@@ -177,6 +183,38 @@ final class HrmController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/api/hrm/departments")
+    List<Map<String, Object>> departments(HttpServletRequest request, HttpServletResponse response) {
+        requireHrmAdmin(request, response);
+        return employees.departments();
+    }
+
+    @PostMapping("/api/hrm/departments")
+    ResponseEntity<Map<String, Long>> createDepartment(HttpServletRequest request, HttpServletResponse response,
+            @RequestBody Employees.DepartmentInput input) {
+        long departmentId = employees.createDepartment(requireHrmMutation(request, response), input);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("departmentId", departmentId));
+    }
+
+    @PatchMapping("/api/hrm/departments/{id}")
+    ResponseEntity<Void> updateDepartment(HttpServletRequest request, HttpServletResponse response,
+            @PathVariable long id, @RequestBody Employees.DepartmentInput input) {
+        employees.updateDepartment(requireHrmMutation(request, response), id, input);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/api/hrm/departments/{id}")
+    ResponseEntity<Void> deleteDepartment(HttpServletRequest request, HttpServletResponse response, @PathVariable long id) {
+        requireHrmMutation(request, response);
+        employees.deleteDepartment(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/api/hrm/people")
+    List<Map<String, Object>> people(HttpServletRequest request, HttpServletResponse response) {
+        return employees.people(requireHrmAdmin(request, response));
+    }
+
     @ExceptionHandler(DuplicateKeyException.class)
     ResponseEntity<Void> duplicate() {
         return ResponseEntity.status(HttpStatus.CONFLICT).build();
@@ -201,10 +239,11 @@ final class HrmController {
 
     private HrmIdentity.User requireHrmAdmin(HttpServletRequest request, HttpServletResponse response) {
         var user = requireUser(request, response);
-        if (settings.hrmAdminSubject.isBlank() || !settings.hrmAdminSubject.equals(user.subject())
-                || settings.issuer == null || !settings.issuer.toString().equals(user.issuer())) {
+        if (settings.issuer == null || !settings.issuer.toString().equals(user.issuer())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
+        boolean bootstrapAdmin = !settings.hrmAdminSubject.isBlank() && settings.hrmAdminSubject.equals(user.subject());
+        if (!bootstrapAdmin && !employees.isAdmin(user)) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         return user;
     }
 
