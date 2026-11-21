@@ -2,6 +2,7 @@
 !Dockerfile
 !package.json
 !package-lock.json
+!.npmrc
 !angular.json
 !tsconfig.json
 !tsconfig.app.json
