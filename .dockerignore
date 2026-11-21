@@ -1,4 +1,15 @@
 **
+!Dockerfile
+!package.json
+!package-lock.json
+!angular.json
+!tsconfig.json
+!tsconfig.app.json
+!src/
+!src/**
+!pom.xml
+!backend/
+!backend/**
 !keycloak/
 !keycloak/Dockerfile
 !keycloak/logo.png
