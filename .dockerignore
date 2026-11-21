@@ -1,0 +1,6 @@
+**
+!keycloak/
+!keycloak/Dockerfile
+!keycloak/logo.png
+!keycloak/theme/
+!keycloak/theme/**

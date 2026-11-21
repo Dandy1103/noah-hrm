@@ -10,12 +10,12 @@
 .header a { color: inherit; }
 
 main {
-  width: min(100%, 560px);
+  width: min(100%, 1120px);
   margin: 40px auto;
   padding: 0 24px;
 }
 
-form { gap: 16px; }
+
 
 label {
   display: grid;
@@ -45,3 +45,26 @@ button:disabled { opacity: 0.55; cursor: default; }
 .hint, .error { margin: 0; font-size: 14px; }
 .hint { color: #475569; }
 .error { color: #b91c1c; }
+
+.toolbar, .actions { align-items: end; flex-wrap: wrap; gap: 8px; }
+.toolbar { justify-content: space-between; margin-bottom: 20px; }
+.search { align-items: end; flex-wrap: wrap; gap: 8px; }
+.search-field { width: min(290px, 75vw); }
+.panel { margin: 16px 0; padding: 20px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; }
+.panel h2 { margin: 0 0 16px; font-size: 20px; }
+.editor { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.editor > .actions, .editor > p { grid-column: 1 / -1; }
+.secondary { border-color: #cbd5e1; background: white; color: var(--brand); }
+.danger { border-color: #b91c1c; background: #b91c1c; }
+.table-wrap { overflow-x: auto; border: 1px solid #cbd5e1; border-radius: 8px; background: white; }
+table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+th { white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+td .actions { min-width: 120px; }
+.pagination { margin-top: 16px; }
+
+@media (max-width: 560px) {
+  main { margin-top: 24px; padding-inline: 16px; }
+  .editor { grid-template-columns: 1fr; }
+}
