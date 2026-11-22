@@ -1,19 +1,5 @@
-import { Component, signal } from '@angular/core';
-
-interface NavLink {
-  label: string;
-  href: string | null;
-}
-
-interface NavSection {
-  title: string;
-  links: NavLink[];
-}
-
-interface NavGroup {
-  label: string;
-  sections: NavSection[];
-}
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { applyNav, loadCatalog, NavGroup } from './nav-catalog';
 
 @Component({
   selector: 'app-navbar',
@@ -22,9 +8,21 @@ interface NavGroup {
   styleUrl: './navbar.component.scss',
 })
 export class NavbarComponent {
-  readonly currentLabel = '人資管理';
+  currentLabel = '人資管理';
   readonly opened = signal<string | null>(null);
-  readonly groups: NavGroup[] = this.buildGroups();
+  groups: NavGroup[] = this.buildGroups();
+
+  constructor() {
+    const controller = new AbortController();
+    inject(DestroyRef).onDestroy(() => controller.abort());
+    void loadCatalog(controller.signal).then((catalog) => {
+      if (!catalog) return;
+      this.groups = applyNav(catalog, 'noah-hrm', '');
+      const mine = catalog.groups.find((group) => group.app === 'noah-hrm');
+      const named = catalog.systems.find((system) => system.repo === mine?.app);
+      if (mine) this.currentLabel = named?.name || mine.label;
+    });
+  }
 
   open(label: string): void {
     this.opened.set(label);
@@ -89,6 +87,14 @@ export class NavbarComponent {
           ] },
           { title: '權限', links: [
             { label: '權限設定', href: null },
+          ] },
+        ],
+      },
+      {
+        label: '應用管理',
+        sections: [
+          { title: '應用', links: [
+            { label: '系統清單', href: null },
           ] },
         ],
       },
