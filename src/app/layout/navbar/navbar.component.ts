@@ -17,7 +17,7 @@ export class NavbarComponent {
     inject(DestroyRef).onDestroy(() => controller.abort());
     void loadCatalog(controller.signal).then((catalog) => {
       if (!catalog) return;
-      this.groups = applyNav(catalog, 'noah-hrm', '');
+      this.groups = applyNav(catalog, 'noah-hrm');
       const mine = catalog.groups.find((group) => group.app === 'noah-hrm');
       const named = catalog.systems.find((system) => system.repo === mine?.app);
       if (mine) this.currentLabel = named?.name || mine.label;
