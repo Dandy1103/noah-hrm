@@ -40,11 +40,13 @@ final class HrmController {
     private final HrmSettings settings;
     private final HrmIdentity identity;
     private final Employees employees;
+    private final DutyRecords duty;
 
-    HrmController(HrmSettings settings, HrmIdentity identity, Employees employees) {
+    HrmController(HrmSettings settings, HrmIdentity identity, Employees employees, DutyRecords duty) {
         this.settings = settings;
         this.identity = identity;
         this.employees = employees;
+        this.duty = duty;
     }
 
     @ModelAttribute
@@ -139,6 +141,11 @@ final class HrmController {
         return Map.of("displayName", requireUser(request, response).displayName());
     }
 
+    @GetMapping("/api/me/employee")
+    Map<String, Object> employee(HttpServletRequest request, HttpServletResponse response) {
+        return employees.profile(requireUser(request, response));
+    }
+
     @GetMapping("/api/hrm/access")
     ResponseEntity<Void> access(HttpServletRequest request, HttpServletResponse response) {
         requireHrmAdmin(request, response);
@@ -213,6 +220,106 @@ final class HrmController {
     @GetMapping("/api/hrm/people")
     List<Map<String, Object>> people(HttpServletRequest request, HttpServletResponse response) {
         return employees.people(requireHrmAdmin(request, response));
+    }
+
+    @GetMapping("/api/hrm/attendance")
+    List<Map<String, Object>> attendance(HttpServletRequest request, HttpServletResponse response) {
+        return duty.attendance(requireHrmAdmin(request, response).issuer());
+    }
+
+    @PostMapping("/api/hrm/attendance")
+    ResponseEntity<Void> createAttendance(HttpServletRequest request, HttpServletResponse response,
+            @RequestBody DutyRecords.AttendanceInput input) {
+        duty.createAttendance(requireHrmMutation(request, response).issuer(), input);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @PatchMapping("/api/hrm/attendance/{id}")
+    ResponseEntity<Void> updateAttendance(HttpServletRequest request, HttpServletResponse response,
+            @PathVariable long id, @RequestBody DutyRecords.AttendanceInput input) {
+        duty.updateAttendance(requireHrmMutation(request, response).issuer(), id, input);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/api/hrm/attendance/{id}")
+    ResponseEntity<Void> deleteAttendance(HttpServletRequest request, HttpServletResponse response, @PathVariable long id) {
+        duty.deleteAttendance(requireHrmMutation(request, response).issuer(), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/api/hrm/leave")
+    List<Map<String, Object>> leave(HttpServletRequest request, HttpServletResponse response) {
+        return duty.leave(requireHrmAdmin(request, response).issuer());
+    }
+
+    @PostMapping("/api/hrm/leave")
+    ResponseEntity<Void> createLeave(HttpServletRequest request, HttpServletResponse response,
+            @RequestBody DutyRecords.LeaveInput input) {
+        duty.createLeave(requireHrmMutation(request, response).issuer(), input);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @PatchMapping("/api/hrm/leave/{id}")
+    ResponseEntity<Void> updateLeave(HttpServletRequest request, HttpServletResponse response,
+            @PathVariable long id, @RequestBody DutyRecords.LeaveInput input) {
+        duty.updateLeave(requireHrmMutation(request, response).issuer(), id, input);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/api/hrm/leave/{id}")
+    ResponseEntity<Void> deleteLeave(HttpServletRequest request, HttpServletResponse response, @PathVariable long id) {
+        duty.deleteLeave(requireHrmMutation(request, response).issuer(), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/api/hrm/overtime")
+    List<Map<String, Object>> overtime(HttpServletRequest request, HttpServletResponse response) {
+        return duty.overtime(requireHrmAdmin(request, response).issuer());
+    }
+
+    @PostMapping("/api/hrm/overtime")
+    ResponseEntity<Void> createOvertime(HttpServletRequest request, HttpServletResponse response,
+            @RequestBody DutyRecords.OvertimeInput input) {
+        duty.createOvertime(requireHrmMutation(request, response).issuer(), input);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @PatchMapping("/api/hrm/overtime/{id}")
+    ResponseEntity<Void> updateOvertime(HttpServletRequest request, HttpServletResponse response,
+            @PathVariable long id, @RequestBody DutyRecords.OvertimeInput input) {
+        duty.updateOvertime(requireHrmMutation(request, response).issuer(), id, input);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/api/hrm/overtime/{id}")
+    ResponseEntity<Void> deleteOvertime(HttpServletRequest request, HttpServletResponse response, @PathVariable long id) {
+        duty.deleteOvertime(requireHrmMutation(request, response).issuer(), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/api/hrm/trips")
+    List<Map<String, Object>> trips(HttpServletRequest request, HttpServletResponse response) {
+        return duty.trips(requireHrmAdmin(request, response).issuer());
+    }
+
+    @PostMapping("/api/hrm/trips")
+    ResponseEntity<Void> createTrip(HttpServletRequest request, HttpServletResponse response,
+            @RequestBody DutyRecords.TripInput input) {
+        duty.createTrip(requireHrmMutation(request, response).issuer(), input);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @PatchMapping("/api/hrm/trips/{id}")
+    ResponseEntity<Void> updateTrip(HttpServletRequest request, HttpServletResponse response,
+            @PathVariable long id, @RequestBody DutyRecords.TripInput input) {
+        duty.updateTrip(requireHrmMutation(request, response).issuer(), id, input);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/api/hrm/trips/{id}")
+    ResponseEntity<Void> deleteTrip(HttpServletRequest request, HttpServletResponse response, @PathVariable long id) {
+        duty.deleteTrip(requireHrmMutation(request, response).issuer(), id);
+        return ResponseEntity.noContent().build();
     }
 
     @ExceptionHandler(DuplicateKeyException.class)

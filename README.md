@@ -26,7 +26,7 @@ Railway 可在 **HRM → Settings → Deploy → Pre-deploy Command** 填入 `ja
 
 ## HRM 上線步驟
 
-要部署別的網站，可以看 [通用部署清單](https://github.com/Dandy1103/noah-portal/blob/develop/docs/DEPLOYMENT.md#通用部署清單)。
+要部署別的網站，可以看 [通用部署清單](https://github.com/Dandy1103/noah-portal/blob/develop/docs/DEPLOYMENT.md#通用部署清單)。本機文件在 [docs](docs/deployment.md)，GitHub 金鑰看 [GitHub Packages 金鑰](docs/github-packages.md)。
 
 打開 Portal 用的 Railway 專案，新增一個 HRM 服務。登入沿用 Portal 的 Keycloak realm，正式網址用 `https://noahhrm.dandy-cheng.com`。
 

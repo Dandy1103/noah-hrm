@@ -1,0 +1,203 @@
+@if (message()) {
+  <p class="toast" role="status">{{ message() }}</p>
+}
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+
+<div class="roster-bar">
+  <app-button type="button" [message]="'新增' + title()" (click)="openCreate()" [disabled]="saving()"></app-button>
+</div>
+
+@if (editor(); as edit) {
+  <section class="panel record">
+    <h2>{{ edit === 'create' ? '新增' : '修改' }}{{ title() }}</h2>
+    <form class="editor u-grid" [formGroup]="form" (ngSubmit)="save()">
+      <app-field>員工
+        <select formControlName="employeeNumber" required>
+          <option value="">請選擇</option>
+          @for (person of staff(); track person.employeeNumber) {
+            <option [value]="person.employeeNumber">{{ person.displayName }}（{{ person.employeeNumber }}）{{ person.status === 'inactive' ? '，已停用' : '' }}</option>
+          }
+        </select>
+      </app-field>
+
+      @switch (kind) {
+        @case ('attendance') {
+          <app-field>日期
+            <app-date-field formControlName="workDate"></app-date-field>
+            <span class="hint">同一天一位員工只記一筆。</span>
+          </app-field>
+          <app-field>上班
+            <input formControlName="clockIn" type="time" step="60">
+          </app-field>
+          <app-field>下班
+            <input formControlName="clockOut" type="time" step="60">
+          </app-field>
+          <app-field>備註
+            <input formControlName="note" maxlength="200" autocomplete="off">
+          </app-field>
+        }
+        @case ('leave') {
+          <app-field>假別
+            <select formControlName="leaveType" required>
+              @for (item of leaveTypes; track item.value) {
+                <option [value]="item.value">{{ item.label }}</option>
+              }
+            </select>
+          </app-field>
+          <app-field>開始
+            <app-date-field formControlName="startsOn"></app-date-field>
+          </app-field>
+          <app-field>結束
+            <app-date-field formControlName="endsOn"></app-date-field>
+          </app-field>
+          <app-field>備註
+            <input formControlName="note" maxlength="200" autocomplete="off">
+          </app-field>
+        }
+        @case ('overtime') {
+          <app-field>日期
+            <app-date-field formControlName="workDate"></app-date-field>
+          </app-field>
+          <app-field>開始
+            <input formControlName="startsAt" type="time" step="60" required>
+          </app-field>
+          <app-field>結束
+            <input formControlName="endsAt" type="time" step="60" required>
+          </app-field>
+          <app-field>事由
+            <input formControlName="reason" maxlength="200" autocomplete="off" required>
+          </app-field>
+        }
+        @case ('trip') {
+          <app-field>地點
+            <input formControlName="place" maxlength="100" autocomplete="off" required>
+          </app-field>
+          <app-field>開始
+            <app-date-field formControlName="startsOn"></app-date-field>
+          </app-field>
+          <app-field>結束
+            <app-date-field formControlName="endsOn"></app-date-field>
+          </app-field>
+          <app-field>事由
+            <input formControlName="reason" maxlength="200" autocomplete="off" required>
+          </app-field>
+        }
+      }
+
+      <div class="actions u-flex">
+        <app-button type="submit" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="!canSave() || saving()"></app-button>
+        <app-button type="button" variant="secondary" message="取消" (click)="closeEditor()" [disabled]="saving()"></app-button>
+      </div>
+    </form>
+  </section>
+}
+
+@if (deleteTarget(); as target) {
+  <section class="panel record">
+    <h2>刪除這筆{{ title() }}？</h2>
+    <p>{{ target.displayName }}，刪除後無法復原。</p>
+    <div class="actions u-flex">
+      <app-button type="button" variant="danger" message="確認刪除" (click)="remove()" [disabled]="saving()"></app-button>
+      <app-button type="button" variant="secondary" message="取消" (click)="deleteTarget.set(null)" [disabled]="saving()"></app-button>
+    </div>
+  </section>
+}
+
+@if (listError()) {
+  <p class="error" role="alert">{{ listError() }}</p>
+} @else if (loading()) {
+  <p class="empty" role="status">讀取中…</p>
+} @else if (records().length === 0) {
+  <p class="empty">還沒有{{ title() }}紀錄。</p>
+} @else {
+  <app-table>
+    <table [attr.aria-label]="title()">
+      <thead>
+        <tr>
+          @switch (kind) {
+            @case ('attendance') {
+              <th>日期</th>
+              <th>員工</th>
+              <th>上班</th>
+              <th>下班</th>
+              <th>備註</th>
+            }
+            @case ('leave') {
+              <th>員工</th>
+              <th>假別</th>
+              <th>開始</th>
+              <th>結束</th>
+              <th>天數</th>
+              <th>備註</th>
+            }
+            @case ('overtime') {
+              <th>日期</th>
+              <th>員工</th>
+              <th>開始</th>
+              <th>結束</th>
+              <th>時數</th>
+              <th>事由</th>
+            }
+            @case ('trip') {
+              <th>員工</th>
+              <th>地點</th>
+              <th>開始</th>
+              <th>結束</th>
+              <th>事由</th>
+            }
+          }
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (record of records(); track record.id) {
+          <tr>
+            @switch (kind) {
+              @case ('attendance') {
+                <td>{{ formatDate(record.workDate) }}</td>
+                <td>{{ record.displayName }}</td>
+                <td>{{ shown(record.clockIn) }}</td>
+                <td>{{ shown(record.clockOut) }}</td>
+                <td>{{ shown(record.note) }}</td>
+              }
+              @case ('leave') {
+                <td>{{ record.displayName }}</td>
+                <td>{{ leaveLabel(record.leaveType) }}</td>
+                <td>{{ formatDate(record.startsOn) }}</td>
+                <td>{{ formatDate(record.endsOn) }}</td>
+                <td>{{ leaveLength(record) }}</td>
+                <td>{{ shown(record.note) }}</td>
+              }
+              @case ('overtime') {
+                <td>{{ formatDate(record.workDate) }}</td>
+                <td>{{ record.displayName }}</td>
+                <td>{{ shown(record.startsAt) }}</td>
+                <td>{{ shown(record.endsAt) }}</td>
+                <td>{{ overtimeLength(record) }}</td>
+                <td>{{ shown(record.reason) }}</td>
+              }
+              @case ('trip') {
+                <td>{{ record.displayName }}</td>
+                <td>{{ shown(record.place) }}</td>
+                <td>{{ formatDate(record.startsOn) }}</td>
+                <td>{{ formatDate(record.endsOn) }}</td>
+                <td>{{ shown(record.reason) }}</td>
+              }
+            }
+            <td>
+              <div class="actions u-flex">
+                <app-button type="button" variant="secondary" message="修改" (click)="openEditor(record)" [disabled]="saving()"></app-button>
+                <app-button type="button" variant="secondary" message="刪除" (click)="confirmDelete(record)" [disabled]="saving()"></app-button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </app-table>
+  @if (records().length === 200) {
+    <p class="hint">顯示最近 200 筆。</p>
+  }
+}

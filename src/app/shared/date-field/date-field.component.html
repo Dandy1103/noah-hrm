@@ -1,0 +1,30 @@
+<div class="date-field">
+  <button type="button" class="date-field__value" [disabled]="isDisabled" [attr.aria-expanded]="isOpen" (click)="toggle()">
+    {{ shownValue }}
+  </button>
+  @if (isOpen) {
+    <div class="date-field__panel">
+      <div class="date-field__bar">
+        <button type="button" (click)="shiftMonth(-1)">上個月</button>
+        <strong>{{ viewLabel }}</strong>
+        <button type="button" (click)="shiftMonth(1)">下個月</button>
+      </div>
+      <div class="date-field__grid">
+        @for (name of weekdays; track name) {
+          <span class="date-field__weekday">{{ name }}</span>
+        }
+        @for (day of days; track day.key) {
+          @if (day.date) {
+            <button type="button"
+              class="date-field__day"
+              [class.is-picked]="day.iso === value"
+              [class.is-today]="day.iso === today"
+              (click)="pick(day.iso)">{{ day.date }}</button>
+          } @else {
+            <span></span>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

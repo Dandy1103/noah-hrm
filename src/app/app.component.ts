@@ -1,13 +1,17 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Observable, finalize } from 'rxjs';
-import {
-  NoahButtonComponent,
-  NoahFieldComponent,
-  NoahTableComponent,
-} from '@dandy1103/ui';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { Observable, catchError, debounceTime, filter, finalize, forkJoin, of } from 'rxjs';
+import { DutyBoardComponent } from './features/duty/duty-board.component';
+import type { DutyKind } from './features/duty/duty-board.component';
 import { HeaderComponent } from './layout/header/header.component';
+import { NavbarComponent } from './layout/navbar/navbar.component';
+import { ButtonComponent } from './shared/button/button.component';
+import { DateFieldComponent } from './shared/date-field/date-field.component';
+import { FieldComponent } from './shared/field/field.component';
+import { TableComponent } from './shared/table/table.component';
 
 interface EmployeeAccount {
   employeeNumber: string;
@@ -28,6 +32,11 @@ interface EmployeeAccount {
   managed: boolean;
   editable: boolean;
   self: boolean;
+}
+
+interface CrumbStep {
+  label: string;
+  go?: 'employees' | 'organization' | 'person' | DutyKind;
 }
 
 interface Department {
@@ -57,18 +66,49 @@ interface AccountPage {
   pageSize: number;
 }
 
+interface DutySnippet {
+  employeeNumber: string;
+  workDate: string | null;
+  clockIn: string | null;
+  clockOut: string | null;
+  note: string | null;
+  leaveType: string | null;
+  startsOn: string | null;
+  endsOn: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  reason: string | null;
+  place: string | null;
+}
+
+interface RecentLine {
+  kind: string;
+  when: string;
+  detail: string;
+}
+
+type HrmSection = 'employees' | 'organization' | DutyKind;
+
+interface HrmScreen {
+  section: HrmSection;
+  view: 'list' | 'new' | 'edit' | 'person';
+  id: string | null;
+}
+
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [ReactiveFormsModule, HeaderComponent, NoahButtonComponent, NoahFieldComponent, NoahTableComponent],
+  imports: [RouterOutlet, NgTemplateOutlet, ReactiveFormsModule, HeaderComponent, NavbarComponent, DutyBoardComponent, ButtonComponent, DateFieldComponent, FieldComponent, TableComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
 export class AppComponent {
   private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder).nonNullable;
   private readonly accountsUrl = '/api/hrm/accounts';
   private readonly departmentsUrl = '/api/hrm/departments';
+  readonly jobTitles = ['總經理', '特助', '人資主管', '人資專員', '人資', '工程師', '產品經理', '業務', '行銷', '財務', '會計', '客服', '行政'];
   readonly employmentTypes = [
     { value: 'regular', label: '正職' },
     { value: 'part_time', label: '部分工時' },
@@ -82,6 +122,11 @@ export class AppComponent {
   ];
 
   readonly mountedInPortal = new URL(document.baseURI).pathname === '/hrm/';
+  readonly portalHomeUrl = this.mountedInPortal
+    ? '/'
+    : ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
+      ? 'http://localhost:4200/'
+      : 'https://noahportal.dandy-cheng.com/';
   private readonly loginParams = new URLSearchParams(location.search);
   readonly signInError = this.loginParams.get('authError');
   readonly signedOut = this.loginParams.get('signedOut') === '1';
@@ -91,9 +136,26 @@ export class AppComponent {
   readonly changePasswordUrl = '/auth/change-password?' + new URLSearchParams({ next: location.pathname + location.search });
   readonly access = signal<'loading' | 'allowed' | 'signed-out' | 'denied' | 'unavailable'>('loading');
   readonly displayName = signal('');
-  readonly accessError = signal('目前無法讀取權限，請稍後重新整理。');
-  readonly section = signal<'employees' | 'organization' | 'attendance' | 'leave'>('employees');
+  readonly accessError = signal('請稍後重新整理。');
+  readonly section = signal(this.sectionFromLocation());
+  readonly dutyEditing = signal(false);
+  readonly dutyView = signal<'list' | 'new' | 'edit'>('list');
+  readonly dutyRecordId = signal<string | null>(null);
+  readonly dutyCount = signal<number | null>(null);
+  private readonly openedAccount = signal<EmployeeAccount | null>(null);
+  private routeStamp = '';
+  readonly dutyListTick = signal(0);
+  readonly dutyKind = computed((): DutyKind | null => {
+    const section = this.section();
+    if (section === 'attendance' || section === 'leave' || section === 'overtime' || section === 'trip') return section;
+    return null;
+  });
   readonly selectedNumber = signal<string | null>(null);
+  readonly reports = signal<EmployeeAccount[]>([]);
+  readonly recent = signal<RecentLine[]>([]);
+  readonly personLoading = signal(false);
+  private personLoad = 0;
+  private toastTimer = 0;
   readonly accounts = signal<EmployeeAccount[]>([]);
   readonly departments = signal<Department[]>([]);
   readonly people = signal<PersonOption[]>([]);
@@ -110,10 +172,15 @@ export class AppComponent {
   readonly departmentEditor = signal<'create' | Department | null>(null);
   readonly deleteDepartmentTarget = signal<Department | null>(null);
   readonly query = this.formBuilder.control('', [Validators.maxLength(100)]);
+  readonly departmentFilter = this.formBuilder.control('');
+  readonly titleFilter = this.formBuilder.control('');
+  private readonly seenTitles = signal<string[]>([]);
+  private listLoad = 0;
   readonly offset = signal(0);
-  readonly pageSize = signal(30);
+  readonly pageSize = signal(10);
   readonly hasMore = signal(false);
   private appliedQuery = '';
+  private filteredAccounts: EmployeeAccount[] | null = null;
   readonly rosterSummary = computed(() => {
     const people = this.people();
     if (people.length === 0) return '';
@@ -122,10 +189,35 @@ export class AppComponent {
     return `${people.length} 人，${inactive} 人已停用`;
   });
   readonly organizationRows = computed(() => this.buildOrganizationRows());
+  readonly trail = computed((): CrumbStep[] => {
+    const section = this.section();
+    const editor = this.editor();
+    const departmentEditor = this.departmentEditor();
+    const selectedNumber = this.selectedNumber();
+    const account = selectedNumber
+      ? this.accounts().find((item) => item.employeeNumber === selectedNumber) ?? null
+      : null;
+    if (section === 'attendance' || section === 'leave' || section === 'overtime' || section === 'trip') {
+      const label = this.dutyLabel(section);
+      if (this.dutyEditing()) return [{ label, go: section }, { label: '登記' }];
+      return [{ label }];
+    }
+    if (section === 'organization') {
+      if (departmentEditor === 'create') return [{ label: '組織', go: 'organization' }, { label: '新增部門' }];
+      if (departmentEditor) return [{ label: '組織', go: 'organization' }, { label: '修改部門' }];
+      return [{ label: '組織' }];
+    }
+    if (editor === 'create') return [{ label: '員工', go: 'employees' }, { label: '新增員工' }];
+    if (editor) return [{ label: '員工', go: 'employees' }, { label: editor.displayName, go: 'person' }, { label: '修改' }];
+    if (account) return [{ label: '員工', go: 'employees' }, { label: account.displayName }];
+    if (selectedNumber) return [{ label: '員工', go: 'employees' }, { label: '員工資料' }];
+    return [{ label: '員工' }];
+  });
 
   readonly form = this.formBuilder.group({
     nationalId: ['', Validators.pattern(/^[a-z][12][0-9]{8}$/i)],
     employeeNumber: ['', [Validators.required, Validators.pattern(/^[a-z0-9][a-z0-9_-]{0,31}$/i)]],
+    displayName: ['', [Validators.required, Validators.maxLength(100)]],
     lastName: ['', [Validators.required, Validators.maxLength(48)]],
     firstName: ['', [Validators.required, Validators.maxLength(48)]],
     departmentId: ['', Validators.required],
@@ -145,11 +237,20 @@ export class AppComponent {
   });
 
   constructor() {
+    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => this.followRoute());
+    this.openCanonicalUrl();
+    if (this.pathSection() && !new URLSearchParams(location.search).has('section')) this.followRoute();
+    this.departmentFilter.valueChanges.subscribe(() => this.loadAccounts(0));
+    this.titleFilter.valueChanges.subscribe(() => this.loadAccounts(0));
+    this.query.valueChanges.pipe(debounceTime(300)).subscribe(() => {
+      this.appliedQuery = this.query.value.trim();
+      this.loadAccounts(0);
+    });
     this.http.get('/api/hrm/access').subscribe({
       next: () => {
         this.access.set('allowed');
         this.loadDisplayName();
-        this.loadAccounts();
+        this.loadAccounts(this.pageOffset());
         this.loadDepartments();
         this.loadPeople();
       },
@@ -169,32 +270,127 @@ export class AppComponent {
   }
 
   private loadDisplayName() {
-    this.http.get<{ displayName: string }>('/api/session').subscribe({
-      next: (user) => this.displayName.set(user.displayName),
-      error: () => this.displayName.set(''),
+    this.http.get<{ displayName: string }>('/api/me/employee').subscribe({
+      next: (employee) => this.displayName.set(employee.displayName),
+      error: () => {
+        this.http.get<{ displayName: string }>('/api/session').subscribe({
+          next: (user) => this.displayName.set(user.displayName),
+          error: () => this.displayName.set(''),
+        });
+      },
     });
   }
 
+  titleFilterChoices(): string[] {
+    const titles = new Set<string>(this.jobTitles);
+    for (const title of this.seenTitles()) titles.add(title);
+    const selected = this.titleFilter.value.trim();
+    if (selected) titles.add(selected);
+    return [...titles];
+  }
+
   loadAccounts(offset = 0) {
+    if (this.departmentFilter.value || this.titleFilter.value) {
+      if (offset > 0 && this.filteredAccounts) {
+        this.showAccountPage(this.filteredAccounts, offset);
+        return;
+      }
+      this.loadFilteredAccounts();
+      return;
+    }
+    this.filteredAccounts = null;
+    this.fetchAccountPage(offset, (page) => {
+      const size = this.pageSize();
+      this.accounts.set(page.accounts.slice(0, size));
+      this.hasMore.set(page.accounts.length > size || page.hasMore);
+      this.offset.set(offset);
+      this.rememberPage(offset);
+      this.rememberTitles(page.accounts);
+    });
+  }
+
+  private loadFilteredAccounts() {
+    const load = ++this.listLoad;
+    this.loading.set(true);
+    this.listError.set('');
+    const found: EmployeeAccount[] = [];
+    const pull = (offset: number) => {
+      this.http.get<AccountPage>(this.accountsUrl, { params: { q: this.appliedQuery, offset } }).subscribe({
+        next: (page) => {
+          if (load !== this.listLoad) return;
+          found.push(...page.accounts);
+          this.rememberTitles(page.accounts);
+          if (page.hasMore && offset < page.pageSize * 4) {
+            pull(offset + page.pageSize);
+            return;
+          }
+          this.filteredAccounts = this.matchFilters(found);
+          this.showAccountPage(this.filteredAccounts, 0);
+          this.loading.set(false);
+        },
+        error: (error: HttpErrorResponse) => {
+          if (load !== this.listLoad) return;
+          this.loading.set(false);
+          this.failAccounts(error);
+        },
+      });
+    };
+    pull(0);
+  }
+
+  private fetchAccountPage(offset: number, apply: (page: AccountPage) => void) {
+    const load = ++this.listLoad;
     this.loading.set(true);
     this.listError.set('');
     this.http.get<AccountPage>(this.accountsUrl, { params: { q: this.appliedQuery, offset } })
-      .pipe(finalize(() => this.loading.set(false)))
+      .pipe(finalize(() => {
+        if (load === this.listLoad) this.loading.set(false);
+      }))
       .subscribe({
         next: (page) => {
-          this.accounts.set(page.accounts);
-          this.pageSize.set(page.pageSize);
-          this.hasMore.set(page.hasMore);
-          this.offset.set(offset);
+          if (load !== this.listLoad) return;
+          apply(page);
         },
         error: (error: HttpErrorResponse) => {
-          if (error.status === 401) this.signIn();
-          const message = error.status === 404
-            ? '找不到帳號管理服務，請確認 HRM 後端是否已啟動。'
-            : '無法讀取帳號，請稍後再試。';
-          this.listError.set(message);
-        }
+          if (load !== this.listLoad) return;
+          this.failAccounts(error);
+        },
       });
+  }
+
+  private showAccountPage(rows: EmployeeAccount[], offset: number) {
+    const size = this.pageSize();
+    this.accounts.set(rows.slice(offset, offset + size));
+    this.hasMore.set(offset + size < rows.length);
+    this.offset.set(offset);
+    this.rememberPage(offset);
+  }
+
+  private matchFilters(accounts: EmployeeAccount[]): EmployeeAccount[] {
+    const departmentId = this.departmentFilter.value;
+    const title = this.titleFilter.value;
+    return accounts.filter((account) => {
+      if (departmentId && String(account.departmentId ?? '') !== departmentId) return false;
+      if (title && (account.jobTitle ?? '') !== title) return false;
+      return true;
+    });
+  }
+
+  private rememberTitles(accounts: EmployeeAccount[]) {
+    const titles = new Set(this.seenTitles());
+    for (const account of accounts) {
+      const title = account.jobTitle?.trim();
+      if (title) titles.add(title);
+    }
+    this.seenTitles.set([...titles]);
+  }
+
+  private failAccounts(error: HttpErrorResponse) {
+    if (error.status === 401) this.signIn();
+    const message = error.status === 404
+      ? '找不到帳號管理服務，請確認 HRM 後端是否已啟動。'
+      : '無法讀取帳號，請稍後再試。';
+    this.listError.set(message);
   }
 
   loadDepartments() {
@@ -203,7 +399,14 @@ export class AppComponent {
     this.http.get<Department[]>(this.departmentsUrl)
       .pipe(finalize(() => this.departmentLoading.set(false)))
       .subscribe({
-        next: (departments) => this.departments.set(departments),
+        next: (departments) => {
+          this.departments.set(departments);
+          const screen = this.screenFromLocation();
+          if (screen.section === 'organization' && screen.view === 'edit' && !this.departmentEditor()) {
+            this.routeStamp = '';
+            this.followRoute();
+          }
+        },
         error: (error: HttpErrorResponse) => {
           if (error.status === 401) this.signIn();
           this.departmentListError.set('無法讀取部門，請稍後再試。');
@@ -222,47 +425,394 @@ export class AppComponent {
     });
   }
 
-  showEmployees() {
-    this.selectedNumber.set(null);
-    this.closeEditor();
-    this.disableTarget.set(null);
-    this.closeDepartmentEditor();
-    this.section.set('employees');
+  private isSection(value: string | null): value is HrmSection {
+    return value === 'employees' || value === 'organization' || value === 'attendance' || value === 'leave' || value === 'overtime' || value === 'trip';
   }
 
-  showOrganization() {
-    this.selectedNumber.set(null);
-    this.closeEditor();
-    this.disableTarget.set(null);
-    this.section.set('organization');
+  private sectionFromLocation(): HrmSection {
+    const fromPath = this.pathSection();
+    if (fromPath) return fromPath;
+    const legacy = new URLSearchParams(location.search).get('section');
+    if (this.isSection(legacy)) return legacy;
+    return 'employees';
   }
 
-  showLater(section: 'attendance' | 'leave') {
+  private pathSection(): HrmSection | null {
+    const base = new URL(document.baseURI).pathname.replace(/\/+$/, '');
+    const path = location.pathname.startsWith(base) ? location.pathname.slice(base.length) : location.pathname;
+    const name = path.split('/').filter(Boolean)[0] ?? '';
+    return this.isSection(name) ? name : null;
+  }
+
+  private openCanonicalUrl() {
+    const legacy = new URLSearchParams(location.search).has('section');
+    if (this.pathSection() && !legacy) return;
+    this.rememberSection(this.section());
+  }
+
+  private screenFromLocation(): HrmScreen {
+    const [head, second, third] = this.pathParts();
+    if (!this.isSection(head)) return { section: 'employees', view: 'list', id: null };
+    if (!second) return { section: head, view: 'list', id: null };
+    if (second === 'new') return { section: head, view: 'new', id: null };
+    if (third === 'edit') return { section: head, view: 'edit', id: second };
+    if (head === 'employees') return { section: head, view: 'person', id: second };
+    return { section: head, view: 'list', id: null };
+  }
+
+  private pathParts(): string[] {
+    const base = new URL(document.baseURI).pathname.replace(/\/+$/, '');
+    const path = location.pathname.startsWith(base) ? location.pathname.slice(base.length) : location.pathname;
+    return path.split('/').filter(Boolean).map((part) => decodeURIComponent(part));
+  }
+
+  private followRoute() {
+    const screen = this.screenFromLocation();
+    const stamp = `${screen.section}/${screen.view}/${screen.id ?? ''}`;
+    if (stamp === this.routeStamp) return;
+    this.routeStamp = stamp;
+    if (screen.section !== this.section()) {
+      this.dutyCount.set(null);
+      this.applySection(screen.section);
+    }
+    this.showScreen(screen);
+  }
+
+  private showScreen(screen: HrmScreen) {
+    const duty = screen.section === 'attendance' || screen.section === 'leave' || screen.section === 'overtime' || screen.section === 'trip';
+    this.dutyView.set(duty && (screen.view === 'new' || screen.view === 'edit') ? screen.view : 'list');
+    this.dutyRecordId.set(duty && screen.view === 'edit' ? screen.id : null);
+    if (!duty) this.dutyCount.set(null);
+    if (screen.section === 'employees') {
+      this.resetDepartmentEditor();
+      this.showEmployeeScreen(screen);
+      return;
+    }
+    if (screen.section === 'organization') {
+      this.resetEmployeeEditor();
+      this.clearPerson();
+      this.showOrganizationScreen(screen);
+      return;
+    }
+    this.resetEmployeeEditor();
+    this.clearPerson();
+    this.resetDepartmentEditor();
+  }
+
+  private showEmployeeScreen(screen: HrmScreen) {
+    if (screen.view === 'list') {
+      this.resetEmployeeEditor();
+      this.clearPerson();
+      return;
+    }
+    if (screen.view === 'new') {
+      this.clearPerson();
+      if (this.editor() !== 'create') this.presentEmployeeEditor();
+      return;
+    }
+    const number = screen.id ?? '';
+    const known = this.accounts().find((account) => account.employeeNumber === number)
+      ?? (this.openedAccount()?.employeeNumber === number ? this.openedAccount() : null);
+    const open = (account: EmployeeAccount | null) => {
+      if (this.routeStamp !== `${screen.section}/${screen.view}/${screen.id ?? ''}`) return;
+      if (!account) {
+        this.resetEmployeeEditor();
+        this.openedAccount.set(null);
+        this.selectedNumber.set(number);
+        return;
+      }
+      this.openedAccount.set(account);
+      if (screen.view === 'person') {
+        this.resetEmployeeEditor();
+        this.selectedNumber.set(number);
+        this.loadPersonContext(number);
+        return;
+      }
+      this.presentEmployeeEditor(account);
+    };
+    if (known) {
+      open(known);
+      return;
+    }
+    this.http.get<AccountPage>(this.accountsUrl, { params: { q: number, offset: 0 } }).subscribe({
+      next: (page) => open(page.accounts.find((account) => account.employeeNumber === number) ?? null),
+      error: () => open(null),
+    });
+  }
+
+  private showOrganizationScreen(screen: HrmScreen) {
+    if (screen.view === 'list') {
+      this.resetDepartmentEditor();
+      return;
+    }
+    if (screen.view === 'new') {
+      if (this.departmentEditor() !== 'create') this.presentDepartmentEditor();
+      return;
+    }
+    const department = this.departments().find((item) => String(item.departmentId) === screen.id);
+    if (!department) {
+      this.resetDepartmentEditor();
+      return;
+    }
+    const current = this.departmentEditor();
+    if (current && current !== 'create' && current.departmentId === department.departmentId) return;
+    this.presentDepartmentEditor(department);
+  }
+
+  private resetEmployeeEditor() {
+    this.form.reset();
+    this.editor.set(null);
+    this.error.set('');
+  }
+
+  private resetDepartmentEditor() {
+    this.departmentForm.reset();
+    this.departmentEditor.set(null);
+    this.deleteDepartmentTarget.set(null);
+    this.error.set('');
+  }
+
+  private clearPerson() {
+    this.personLoad += 1;
     this.selectedNumber.set(null);
-    this.closeEditor();
+    this.openedAccount.set(null);
+    this.reports.set([]);
+    this.recent.set([]);
+    this.personLoading.set(false);
+  }
+
+  private applySection(section: HrmSection) {
+    this.selectedNumber.set(null);
+    this.openedAccount.set(null);
+    this.resetEmployeeEditor();
     this.disableTarget.set(null);
-    this.closeDepartmentEditor();
+    this.resetDepartmentEditor();
+    if (section === 'attendance' || section === 'leave' || section === 'overtime' || section === 'trip') {
+      this.dutyListTick.update((value) => value + 1);
+    }
     this.section.set(section);
   }
 
+  showEmployees() {
+    this.applySection('employees');
+    this.rememberSection('employees');
+  }
+
+  showOrganization() {
+    this.applySection('organization');
+    this.rememberSection('organization');
+  }
+
+  openedDuty(): DutyKind {
+    return this.dutyKind() ?? 'attendance';
+  }
+
+  dutyLabel(section: DutyKind): string {
+    if (section === 'leave') return '請假';
+    if (section === 'overtime') return '加班';
+    if (section === 'trip') return '出差';
+    return '出勤';
+  }
+
+  dutyPageTitle(section: DutyKind): string {
+    if (section === 'attendance') return '出勤紀錄';
+    return this.dutyLabel(section);
+  }
+
+  showDuty(section: DutyKind) {
+    this.applySection(section);
+    this.rememberSection(section);
+  }
+
+  followCrumb(step: CrumbStep['go']): void {
+    if (step === 'employees') this.showEmployees();
+    else if (step === 'organization') this.showOrganization();
+    else if (step === 'person') this.closeEditor();
+    else if (step === 'attendance' || step === 'leave' || step === 'overtime' || step === 'trip') this.showDuty(step);
+  }
+
+  private pageOffset(): number {
+    const page = Number(new URLSearchParams(location.search).get('page'));
+    if (!Number.isInteger(page) || page < 2) return 0;
+    return (page - 1) * this.pageSize();
+  }
+
+  private pageParams(): { page: number | null } {
+    const page = Number(new URLSearchParams(location.search).get('page'));
+    if (!Number.isInteger(page) || page < 2) return { page: null };
+    return { page };
+  }
+
+  private rememberPage(offset: number) {
+    const page = Math.floor(offset / this.pageSize()) + 1;
+    this.router.navigate([], {
+      queryParams: { page: page < 2 ? null : page },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private rememberSection(section: HrmSection) {
+    const page = section === 'employees' ? this.pageParams().page : null;
+    this.router.navigate(['/', section], {
+      queryParams: { page, section: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
   openPerson(account: EmployeeAccount) {
-    this.closeEditor();
-    this.disableTarget.set(null);
-    this.message.set('');
-    this.error.set('');
-    this.selectedNumber.set(account.employeeNumber);
+    this.router.navigate(['/employees', account.employeeNumber]);
   }
 
   closePerson() {
-    this.closeEditor();
-    this.disableTarget.set(null);
-    this.selectedNumber.set(null);
+    this.router.navigate(['/employees'], { queryParamsHandling: 'merge', queryParams: { section: null } });
+  }
+
+  private loadPersonContext(number: string) {
+    const load = ++this.personLoad;
+    this.reports.set([]);
+    this.recent.set([]);
+    this.personLoading.set(true);
+    let pending = 2;
+    const finish = () => {
+      pending -= 1;
+      if (pending === 0 && load === this.personLoad) this.personLoading.set(false);
+    };
+    this.collectReports(number, load, 0, [], finish);
+    forkJoin({
+      attendance: this.dutyRows('/api/hrm/attendance'),
+      leave: this.dutyRows('/api/hrm/leave'),
+      overtime: this.dutyRows('/api/hrm/overtime'),
+      trips: this.dutyRows('/api/hrm/trips'),
+    }).subscribe((groups) => {
+      if (load === this.personLoad) this.recent.set(this.buildRecent(number, groups));
+      finish();
+    });
+  }
+
+  private collectReports(number: string, load: number, offset: number, found: EmployeeAccount[], finish: () => void) {
+    this.http.get<AccountPage>(this.accountsUrl, { params: { q: '', offset } }).subscribe({
+      next: (page) => {
+        if (load !== this.personLoad) return;
+        const next = found.concat(page.accounts.filter((account) => account.managerEmployeeNumber === number));
+        if (page.hasMore && offset < page.pageSize * 4) {
+          this.collectReports(number, load, offset + page.pageSize, next, finish);
+          return;
+        }
+        this.reports.set(next);
+        finish();
+      },
+      error: () => {
+        if (load !== this.personLoad) return;
+        this.reports.set(found);
+        finish();
+      },
+    });
+  }
+
+  private dutyRows(path: string) {
+    return this.http.get<DutySnippet[]>(path).pipe(catchError(() => of([] as DutySnippet[])));
+  }
+
+  private buildRecent(number: string, groups: { attendance: DutySnippet[]; leave: DutySnippet[]; overtime: DutySnippet[]; trips: DutySnippet[] }): RecentLine[] {
+    const lines: { sort: string; kind: string; when: string; detail: string }[] = [];
+    for (const row of groups.attendance) {
+      if (row.employeeNumber !== number) continue;
+      lines.push({ sort: row.workDate ?? '', kind: '出勤', when: this.formatDate(row.workDate), detail: this.clockDetail(row) });
+    }
+    for (const row of groups.leave) {
+      if (row.employeeNumber !== number) continue;
+      lines.push({
+        sort: row.startsOn ?? '',
+        kind: '請假',
+        when: this.rangeLabel(row.startsOn, row.endsOn),
+        detail: this.joinDetail(this.leaveName(row.leaveType), row.note),
+      });
+    }
+    for (const row of groups.overtime) {
+      if (row.employeeNumber !== number) continue;
+      const span = row.startsAt && row.endsAt ? `${row.startsAt}–${row.endsAt}` : '';
+      lines.push({ sort: row.workDate ?? '', kind: '加班', when: this.formatDate(row.workDate), detail: this.joinDetail(span, row.reason) });
+    }
+    for (const row of groups.trips) {
+      if (row.employeeNumber !== number) continue;
+      lines.push({ sort: row.startsOn ?? '', kind: '出差', when: this.rangeLabel(row.startsOn, row.endsOn), detail: this.joinDetail(row.place, row.reason) });
+    }
+    lines.sort((left, right) => right.sort.localeCompare(left.sort));
+    return lines.slice(0, 8).map((line) => ({ kind: line.kind, when: line.when, detail: line.detail }));
+  }
+
+  private clockDetail(row: DutySnippet): string {
+    const parts: string[] = [];
+    if (row.clockIn) parts.push(`上班 ${row.clockIn}`);
+    if (row.clockOut) parts.push(`下班 ${row.clockOut}`);
+    if (row.note) parts.push(row.note);
+    return parts.join('，') || '—';
+  }
+
+  private rangeLabel(start: string | null, end: string | null): string {
+    const from = this.formatDate(start);
+    const to = this.formatDate(end);
+    if (from === '—' ) return to;
+    if (to === '—' || from === to) return from;
+    return `${from}–${to}`;
+  }
+
+  private joinDetail(leading: string | null, trailing: string | null): string {
+    const parts = [leading?.trim() ?? '', trailing?.trim() ?? ''].filter((part) => part.length > 0);
+    return parts.join('，') || '—';
+  }
+
+  private leaveName(value: string | null): string {
+    const names: Record<string, string> = {
+      annual: '特休',
+      sick: '病假',
+      personal: '事假',
+      menstrual: '生理假',
+      bereavement: '喪假',
+      marriage: '婚假',
+      official: '公假',
+    };
+    if (!value) return '';
+    return names[value] ?? value;
+  }
+
+  private refreshOpenedAccount() {
+    const number = this.selectedNumber();
+    if (!number) return;
+    this.http.get<AccountPage>(this.accountsUrl, { params: { q: number, offset: 0 } }).subscribe({
+      next: (page) => {
+        const account = page.accounts.find((item) => item.employeeNumber === number);
+        if (account && this.selectedNumber() === number) this.openedAccount.set(account);
+      },
+    });
   }
 
   selectedAccount(): EmployeeAccount | null {
     const number = this.selectedNumber();
     if (!number) return null;
-    return this.accounts().find((account) => account.employeeNumber === number) ?? null;
+    const listed = this.accounts().find((account) => account.employeeNumber === number);
+    if (listed) return listed;
+    const opened = this.openedAccount();
+    return opened?.employeeNumber === number ? opened : null;
+  }
+
+  personDepartment(account: EmployeeAccount): Department | null {
+    if (account.departmentId == null) return null;
+    return this.departments().find((item) => item.departmentId === account.departmentId) ?? null;
+  }
+
+  ageLabel(value: string | null): string {
+    if (!value) return '';
+    const born = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(born.getTime())) return '';
+    const today = new Date();
+    let age = today.getFullYear() - born.getFullYear();
+    const month = today.getMonth() - born.getMonth();
+    if (month < 0 || (month === 0 && today.getDate() < born.getDate())) age -= 1;
+    if (age < 0) return '';
+    return `${age} 歲`;
   }
 
   employmentLabel(value: string | null): string {
@@ -307,11 +857,17 @@ export class AppComponent {
   }
 
   openEditor(account?: EmployeeAccount) {
+    if (account) this.router.navigate(['/employees', account.employeeNumber, 'edit']);
+    else this.router.navigate(['/employees', 'new']);
+  }
+
+  private presentEmployeeEditor(account?: EmployeeAccount) {
     this.error.set('');
     this.message.set('');
     this.disableTarget.set(null);
     this.form.reset(account ? {
       employeeNumber: account.employeeNumber,
+      displayName: account.displayName,
       firstName: account.firstName ?? '',
       lastName: account.lastName ?? '',
       departmentId: account.departmentId == null ? '' : String(account.departmentId),
@@ -331,16 +887,25 @@ export class AppComponent {
     if (account) nationalId.removeValidators(Validators.required);
     else nationalId.addValidators(Validators.required);
     nationalId.updateValueAndValidity();
+    if (account) this.selectedNumber.set(account.employeeNumber);
     this.editor.set(account ?? 'create');
   }
 
   closeEditor() {
-    this.form.reset();
-    this.editor.set(null);
-    this.error.set('');
+    const editing = this.editor();
+    if (editing && editing !== 'create') {
+      this.router.navigate(['/employees', editing.employeeNumber]);
+      return;
+    }
+    this.router.navigate(['/employees'], { queryParamsHandling: 'merge', queryParams: { section: null } });
   }
 
   openDepartmentEditor(department?: Department) {
+    if (department) this.router.navigate(['/organization', department.departmentId, 'edit']);
+    else this.router.navigate(['/organization', 'new']);
+  }
+
+  private presentDepartmentEditor(department?: Department) {
     this.error.set('');
     this.message.set('');
     this.deleteDepartmentTarget.set(null);
@@ -353,10 +918,7 @@ export class AppComponent {
   }
 
   closeDepartmentEditor() {
-    this.departmentForm.reset();
-    this.departmentEditor.set(null);
-    this.deleteDepartmentTarget.set(null);
-    this.error.set('');
+    this.router.navigate(['/organization']);
   }
 
   saveDepartment() {
@@ -397,6 +959,7 @@ export class AppComponent {
     if (!editor || this.form.invalid || this.saving()) return;
     const raw = this.form.getRawValue();
     const profile = {
+      displayName: raw.displayName,
       firstName: raw.firstName,
       lastName: raw.lastName,
       departmentId: Number(raw.departmentId),
@@ -410,9 +973,9 @@ export class AppComponent {
     };
     const { employeeNumber, nationalId, initialPassword } = raw;
     if (editor === 'create') {
-      this.mutate(this.http.post(this.accountsUrl, { ...profile, employeeNumber, nationalId, initialPassword }), '已新增員工。', true);
+      this.mutate(this.http.post(this.accountsUrl, { ...profile, employeeNumber, nationalId, initialPassword }), '已新增員工。', true, {}, true);
     } else {
-      this.mutate(this.http.patch(this.accountUrl(editor), { ...profile, nationalId }), '已儲存員工資料。');
+      this.mutate(this.http.patch(this.accountUrl(editor), { ...profile, nationalId }), '已儲存員工資料。', false, {}, true);
     }
   }
 
@@ -458,33 +1021,85 @@ export class AppComponent {
     return rows;
   }
 
+  reloadPage(): void {
+    location.reload();
+  }
+
   private signIn() {
     if (this.signInError || this.signedOut) this.access.set('signed-out');
     else location.replace(this.loginUrl);
+  }
+
+  jobTitleChoices(): string[] {
+    const current = this.form.controls.jobTitle.value?.trim() ?? '';
+    if (current && !this.jobTitles.includes(current)) return [current, ...this.jobTitles];
+    return this.jobTitles;
+  }
+
+  personName(account: Pick<EmployeeAccount, 'firstName' | 'lastName'>): string {
+    const last = account.lastName?.trim() ?? '';
+    const first = account.firstName?.trim() ?? '';
+    const combined = `${last}${first}`;
+    if (!combined) return '—';
+    return /[\u4e00-\u9fff]/.test(combined) ? combined : `${first} ${last}`.trim();
+  }
+
+  displayNote(account: Pick<EmployeeAccount, 'firstName' | 'lastName' | 'displayName'>): string {
+    const display = account.displayName?.trim() ?? '';
+    if (!display || display === this.personName(account)) return '';
+    return display;
   }
 
   private accountUrl(account: EmployeeAccount) {
     return this.accountsUrl + '/' + encodeURIComponent(account.employeeNumber);
   }
 
-  private mutate(request: Observable<unknown>, success: string, resetSearch = false, failures: Record<number, string> = {}) {
+  private showToast(text: string) {
+    window.clearTimeout(this.toastTimer);
+    this.message.set(text);
+    this.toastTimer = window.setTimeout(() => this.message.set(''), 3200);
+  }
+
+  private mutate(request: Observable<unknown>, success: string, resetSearch = false, failures: Record<number, string> = {}, backToList = false) {
     if (this.saving()) return;
     this.saving.set(true);
     this.error.set('');
     this.message.set('');
     request.pipe(finalize(() => this.saving.set(false))).subscribe({
       next: () => {
-        this.closeEditor();
-        this.closeDepartmentEditor();
+        const place = this.screenFromLocation();
+        this.form.reset();
+        this.editor.set(null);
+        this.departmentForm.reset();
+        this.departmentEditor.set(null);
         this.disableTarget.set(null);
-        this.message.set(success);
+        if (backToList) {
+          this.personLoad += 1;
+          this.selectedNumber.set(null);
+          this.openedAccount.set(null);
+          this.reports.set([]);
+          this.recent.set([]);
+        }
+        this.showToast(success);
+        if (backToList) {
+          this.router.navigate(['/employees'], {
+            queryParamsHandling: 'merge',
+            queryParams: { section: null, page: resetSearch ? null : this.pageParams().page },
+          });
+        } else if (place.section === 'organization' && place.view !== 'list') {
+          this.router.navigate(['/organization']);
+        }
         if (resetSearch) {
-          this.query.reset();
+          this.query.reset('', { emitEvent: false });
+          this.departmentFilter.setValue('', { emitEvent: false });
+          this.titleFilter.setValue('', { emitEvent: false });
           this.appliedQuery = '';
         }
+        this.loadDisplayName();
         this.loadAccounts(resetSearch ? 0 : this.offset());
         this.loadDepartments();
         this.loadPeople();
+        this.refreshOpenedAccount();
       },
       error: (error: HttpErrorResponse) => {
         if (error.status === 401) {

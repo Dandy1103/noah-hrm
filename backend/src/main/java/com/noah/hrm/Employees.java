@@ -30,7 +30,6 @@ final class Employees {
     private static final Logger LOG = LoggerFactory.getLogger(Employees.class);
     private static final Pattern NUMBER = Pattern.compile("[A-Z0-9][A-Z0-9_-]{0,31}");
     private static final Pattern EMAIL = Pattern.compile("[^\\s@]+@[^\\s@]+\\.[^\\s@]+");
-    private static final Pattern HAN = Pattern.compile("\\p{IsHan}");
     private static final Set<String> EMPLOYMENT_TYPES = Set.of("regular", "part_time", "fixed_term", "intern");
     private static final Set<String> ROLES = Set.of("admin", "manager", "employee");
     private static final int PAGE_SIZE = 30;
@@ -48,16 +47,12 @@ final class Employees {
             if (!EMAIL.matcher(address).matches()) throw badRequest();
             return new Profile(text(firstName, 48), text(lastName, 48), address);
         }
-
-        String displayName() {
-            return HAN.matcher(lastName + firstName).find() ? lastName + firstName : firstName + " " + lastName;
-        }
     }
-    record NewAccount(String employeeNumber, String nationalId, String firstName, String lastName, Long departmentId,
-                      String jobTitle, String hiredOn, String bornOn, String employmentType, String email,
-                      String initialPassword, String managerEmployeeNumber, String role) {}
-    record AccountUpdate(String firstName, String lastName, Long departmentId, String jobTitle, String hiredOn,
-                         String bornOn, String employmentType, String email, String nationalId,
+    record NewAccount(String employeeNumber, String nationalId, String displayName, String firstName, String lastName,
+                      Long departmentId, String jobTitle, String hiredOn, String bornOn, String employmentType,
+                      String email, String initialPassword, String managerEmployeeNumber, String role) {}
+    record AccountUpdate(String displayName, String firstName, String lastName, Long departmentId, String jobTitle,
+                         String hiredOn, String bornOn, String employmentType, String email, String nationalId,
                          String managerEmployeeNumber, String role) {}
     record DepartmentInput(String name, Long parentDepartmentId, String headEmployeeNumber) {}
     record AccountPage(List<Map<String, Object>> accounts, boolean hasMore, int pageSize) {}
@@ -90,6 +85,11 @@ final class Employees {
 
     void requireDatabase() {
         if (jdbc == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    JdbcTemplate jdbc() {
+        requireDatabase();
+        return jdbc;
     }
 
     @PreDestroy
@@ -142,7 +142,7 @@ final class Employees {
                 SELECT e.employee_number AS "employeeNumber", e.display_name AS "displayName",
                     COALESCE(d.name, e.department) AS department, e.department_id AS "departmentId",
                     e.first_name AS "firstName", e.last_name AS "lastName", e.email, e.status,
-                    e.managed_account AS managed, e.managed_account AS editable, (e.oidc_subject = ?) AS self,
+                    e.managed_account AS managed, true AS editable, (e.oidc_subject = ?) AS self,
                     e.role AS role,
                     e.job_title AS "jobTitle", to_char(e.hired_on, 'YYYY-MM-DD') AS "hiredOn",
                     to_char(e.born_on, 'YYYY-MM-DD') AS "bornOn",
@@ -167,6 +167,7 @@ final class Employees {
         String number = normalizeNumber(input.employeeNumber());
         String username = NationalId.username(input.nationalId());
         var profile = new Profile(input.firstName(), input.lastName(), input.email()).validated();
+        String shown = text(input.displayName(), 100);
         long departmentId = departmentId(input.departmentId());
         String title = text(input.jobTitle(), 100);
         LocalDate hired = hiredOn(input.hiredOn());
@@ -194,7 +195,7 @@ final class Employees {
                                                oidc_subject, managed_account, first_name, last_name, email, job_title,
                                                hired_on, born_on, employment_type, manager_employee_number, role)
                         VALUES (?, ?, ?, ?, ?, ?, true, ?, ?, ?, ?, ?::date, ?::date, ?, ?::text, ?)
-                        """, number, profile.displayName(), department, departmentId, user.issuer(), subject[0],
+                        """, number, shown, department, departmentId, user.issuer(), subject[0],
                         profile.firstName(), profile.lastName(), profile.email(), title, hired, born, type, manager,
                         assignedRole);
             });
@@ -217,6 +218,7 @@ final class Employees {
     void update(HrmIdentity.User user, String number, AccountUpdate input) {
         requireDatabase();
         Profile profile = new Profile(input.firstName(), input.lastName(), input.email()).validated();
+        String shown = text(input.displayName(), 100);
         long departmentId = departmentId(input.departmentId());
         String title = text(input.jobTitle(), 100);
         LocalDate hired = hiredOn(input.hiredOn());
@@ -225,8 +227,8 @@ final class Employees {
         String assignedRole = role(input.role());
         String username = input.nationalId() == null || input.nationalId().isBlank()
                 ? null : NationalId.username(input.nationalId());
-        tx.executeWithoutResult(status -> {
-            var account = managed(user, number, true);
+        ManagedAccount saved = tx.execute(status -> {
+            var account = locked(user, number);
             keepAnAdmin(user, number, account.role(), assignedRole);
             String department = departmentName(departmentId);
             String manager = optionalManager(user.issuer(), number, input.managerEmployeeNumber());
@@ -235,18 +237,24 @@ final class Employees {
                         department_id=?, job_title=?, hired_on=?::date, born_on=?::date, employment_type=?,
                         manager_employee_number=?::text, role=?
                     WHERE employee_number=?
-                    """, profile.firstName(), profile.lastName(), profile.email(), profile.displayName(),
+                    """, profile.firstName(), profile.lastName(), profile.email(), shown,
                     department, departmentId, title, hired, born, type, manager, assignedRole, number);
+            return account;
+        });
+        if (saved == null || !saved.managed) return;
+        try {
             Map<String, Object> attributes = new LinkedHashMap<>();
             attributes.put("firstName", profile.firstName());
             attributes.put("lastName", profile.lastName());
             attributes.put("email", profile.email());
             if (username != null) attributes.put("username", username);
-            if (account.email == null || !account.email.equalsIgnoreCase(profile.email())) {
+            if (saved.email == null || !saved.email.equalsIgnoreCase(profile.email())) {
                 attributes.put("emailVerified", false);
             }
-            keycloak.connect().update(account.subject, attributes);
-        });
+            keycloak.connect().update(saved.subject, attributes);
+        } catch (RuntimeException error) {
+            LOG.warn("Employee {} was saved, but the login account was not updated: {}", number, error.getClass().getSimpleName());
+        }
     }
 
     void changeStatus(HrmIdentity.User user, String number, boolean enabled) {
@@ -337,7 +345,7 @@ final class Employees {
                 """, user.issuer(), user.subject());
     }
 
-    private ManagedAccount managed(HrmIdentity.User user, String number, boolean allowSelf) {
+    private ManagedAccount locked(HrmIdentity.User user, String number) {
         if (!NUMBER.matcher(number).matches()) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         var result = jdbc.query("""
                 SELECT oidc_subject, managed_account, email, role FROM employees
@@ -345,7 +353,11 @@ final class Employees {
                 """, (rs, row) -> new ManagedAccount(rs.getString(1), rs.getBoolean(2), rs.getString(3), rs.getString(4)),
                 number, user.issuer());
         if (result.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        var account = result.getFirst();
+        return result.getFirst();
+    }
+
+    private ManagedAccount managed(HrmIdentity.User user, String number, boolean allowSelf) {
+        var account = locked(user, number);
         if (!account.managed || (!allowSelf && Objects.equals(account.subject, user.subject()))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }

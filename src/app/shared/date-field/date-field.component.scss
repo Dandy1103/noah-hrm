@@ -1,0 +1,108 @@
+.date-field {
+  position: relative;
+}
+
+.date-field__value {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+
+.date-field__value:disabled {
+  background-color: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.date-field__value:focus-visible,
+.date-field__bar button:focus-visible,
+.date-field__day:focus-visible {
+  outline: 2px solid #0284c7;
+  outline-offset: 2px;
+}
+
+.date-field__panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 5;
+  width: 280px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(0 20 48 / 12%);
+}
+
+.date-field__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.date-field__bar button {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #001430;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.date-field__bar button:hover {
+  background: #edf2f8;
+}
+
+.date-field__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.date-field__weekday {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.date-field__day {
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.date-field__day:hover {
+  background: #edf2f8;
+}
+
+.date-field__day.is-today {
+  box-shadow: inset 0 0 0 1px #001430;
+  font-weight: 700;
+}
+
+.date-field__day.is-picked,
+.date-field__day.is-picked:hover {
+  background: #001430;
+  color: #fff;
+  box-shadow: none;
+}

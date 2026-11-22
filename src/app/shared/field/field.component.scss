@@ -1,0 +1,59 @@
+app-field {
+    display: block;
+}
+
+app-field.search-field {
+    width: min(290px, 75vw);
+}
+
+.field {
+    display: grid;
+    gap: 6px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.field input,
+.field select,
+.field textarea {
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background-color: white;
+    color: inherit;
+    font: inherit;
+    font-weight: 400;
+}
+
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible {
+    outline: 2px solid #0284c7;
+    outline-offset: 2px;
+}
+
+.field select,
+select.bar-control {
+    appearance: none;
+    padding-right: 32px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px 16px;
+}
+
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+    background-color: #f1f5f9;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+.field .hint {
+    margin: 0;
+    color: #475569;
+    font-size: 16px;
+    font-weight: 400;
+}
