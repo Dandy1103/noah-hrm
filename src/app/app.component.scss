@@ -5,12 +5,14 @@ router-outlet {
 .app {
   display: grid;
   grid-template-rows: auto 1fr;
+  min-width: 0;
   min-height: calc(100dvh - var(--header-height));
 }
 
 .shell {
   display: flex;
   align-items: stretch;
+  min-width: 0;
   min-height: 0;
 }
 

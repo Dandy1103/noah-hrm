@@ -23,6 +23,8 @@
     }
     @if (backLabel()) {
       <a class="site-header__link" href="/">{{ backLabel() }}</a>
+    } @else {
+      <a class="site-header__link" [href]="portalHomeUrl()">回入口</a>
     }
     @if (showLogout()) {
       <form class="site-header__logout" action="/auth/logout" method="post">
