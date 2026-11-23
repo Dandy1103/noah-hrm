@@ -31,7 +31,7 @@
         <h2 id="access-error-title">無法讀取權限</h2>
         <p id="access-error-text">{{ accessError() }}</p>
         <div class="access-dialog__actions">
-          <app-button type="button" message="重新整理" (click)="reloadPage()"></app-button>
+          <noah-button type="button" message="重新整理" (click)="reloadPage()"></noah-button>
         </div>
       </section>
     </div>
@@ -40,42 +40,9 @@
     <div class="app">
     <app-navbar />
     <div class="shell">
-      <nav class="sidenav" aria-label="人資功能">
-        <div class="sidenav__group">
-          <p>人員</p>
-          <button type="button" [class.is-active]="section() === 'employees'" [attr.aria-current]="section() === 'employees' ? 'page' : null" (click)="showEmployees()">員工</button>
-          <button type="button" [class.is-active]="section() === 'organization'" [attr.aria-current]="section() === 'organization' ? 'page' : null" (click)="showOrganization()">組織</button>
-        </div>
-        <div class="sidenav__group">
-          <p>出勤</p>
-          <button type="button" [class.is-active]="section() === 'attendance'" [attr.aria-current]="section() === 'attendance' ? 'page' : null" (click)="showDuty('attendance')">出勤紀錄</button>
-          <button type="button" [class.is-active]="section() === 'overtime'" [attr.aria-current]="section() === 'overtime' ? 'page' : null" (click)="showDuty('overtime')">加班</button>
-        </div>
-        <div class="sidenav__group">
-          <p>假勤</p>
-          <button type="button" [class.is-active]="section() === 'leave'" [attr.aria-current]="section() === 'leave' ? 'page' : null" (click)="showDuty('leave')">請假</button>
-          <button type="button" [class.is-active]="section() === 'trip'" [attr.aria-current]="section() === 'trip' ? 'page' : null" (click)="showDuty('trip')">出差</button>
-        </div>
-      </nav>
+      <noah-sidebar [sections]="sideSections" />
 
       <main class="workspace">
-        <ng-template #breadcrumb>
-          <nav class="crumb" aria-label="麵包屑">
-            <ol>
-              <li><a [href]="portalHomeUrl">首頁</a></li>
-              <li><button type="button" (click)="showEmployees()">人資管理</button></li>
-              @for (crumb of trail(); track $index; let last = $last) {
-                <li [attr.aria-current]="last ? 'page' : null">
-                  @if (!last && crumb.go) {
-                    <button type="button" (click)="followCrumb(crumb.go)">{{ crumb.label }}</button>
-                  } @else {
-                    {{ crumb.label }}
-                  }
-                </li>
-              }
-            </ol>
-          </nav>
-        </ng-template>
         @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
         @if ((section() === 'employees' || section() === 'organization' || dutyKind()) && peopleError()) {
           <p class="error" role="alert">{{ peopleError() }}</p>
@@ -84,24 +51,21 @@
         @if (section() === 'employees') {
           @if (editor(); as edit) {
             <div class="record">
-              <div class="roster-head">
-                <div class="roster-head__title">
-                  <h1>{{ edit === 'create' ? '新增員工' : edit.displayName }}</h1>
-                  @if (edit !== 'create') { <p>{{ edit.employeeNumber }}</p> }
-                </div>
-                <ng-container [ngTemplateOutlet]="breadcrumb" />
-              </div>
+              <noah-page-heading [title]="edit === 'create' ? '新增員工' : edit.displayName" [breadcrumbs]="breadcrumbs()" />
+              @if (edit !== 'create') {
+                <div class="page-heading-details"><p>{{ edit.employeeNumber }}</p></div>
+              }
               <section class="panel">
                 <form class="editor u-grid" [formGroup]="form" (ngSubmit)="save()">
                   <app-field>員工編號
-                    <input formControlName="employeeNumber" maxlength="32" autocomplete="off" required>
+                    <input noahInput formControlName="employeeNumber" maxlength="32" autocomplete="off" required>
                     @if (edit !== 'create') {
                       <span class="hint">建立後不能改。</span>
                     }
                   </app-field>
                   @if (edit === 'create' || edit.managed) {
                     <app-field>{{ edit === 'create' ? '身分證字號' : '新身分證字號' }}
-                      <input formControlName="nationalId" maxlength="10" autocomplete="off" spellcheck="false"
+                      <input noahInput formControlName="nationalId" maxlength="10" autocomplete="off" spellcheck="false"
                              [attr.required]="edit === 'create' ? '' : null">
                       @if (form.controls.nationalId.touched && form.controls.nationalId.hasError('pattern')) {
                         <span class="hint">請輸入 1 個英文字母和 9 個數字。</span>
@@ -165,21 +129,21 @@
                     </select>
                   </app-field>
                   <app-field>姓氏
-                    <input formControlName="lastName" maxlength="48" required>
+                    <input noahInput formControlName="lastName" maxlength="48" required>
                   </app-field>
                   <app-field>名字
-                    <input formControlName="firstName" maxlength="48" required>
+                    <input noahInput formControlName="firstName" maxlength="48" required>
                   </app-field>
                   <app-field>顯示名稱
-                    <input formControlName="displayName" maxlength="100" required>
+                    <input noahInput formControlName="displayName" maxlength="100" required>
                     <span class="hint">用在名單、表頭和主管選單，不會跟著姓名改。</span>
                   </app-field>
                   <app-field>電子郵件
-                    <input formControlName="email" type="email" maxlength="254" required>
+                    <input noahInput formControlName="email" type="email" maxlength="254" required>
                   </app-field>
                   @if (edit === 'create') {
                     <app-field>初始密碼
-                      <input formControlName="initialPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+                      <input noahInput formControlName="initialPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
                       <span class="hint">至少 12 個字元，員工首次登入時需更改。</span>
                     </app-field>
                   }
@@ -187,8 +151,8 @@
                     <p class="hint">員工編號以英文字母或數字開頭，可用連字號和底線。</p>
                   }
                   <div class="actions u-flex">
-                    <app-button type="submit" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="form.invalid || saving()"></app-button>
-                    <app-button type="button" variant="secondary" message="取消" (click)="closeEditor()" [disabled]="saving()"></app-button>
+                    <noah-button type="submit" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="form.invalid || saving()"></noah-button>
+                    <noah-button type="button" variant="secondary" message="取消" (click)="closeEditor()" [disabled]="saving()"></noah-button>
                   </div>
                 </form>
               </section>
@@ -196,20 +160,17 @@
           } @else if (selectedAccount()) {
             @if (selectedAccount(); as account) {
             <div class="file-head">
-              <div class="roster-head">
-                <div class="roster-head__title">
-                  <h1>{{ account.displayName }}</h1>
+              <noah-page-heading [title]="account.displayName" [breadcrumbs]="breadcrumbs()" />
+              <div class="page-heading-details">
                   <p>{{ account.employeeNumber }}</p>
                   <span class="status" [class.status--off]="account.status === 'inactive'">{{ account.status === 'inactive' ? '已停用' : '在職' }}</span>
-                </div>
-                <ng-container [ngTemplateOutlet]="breadcrumb" />
               </div>
               <div class="file-actions u-flex">
-                <app-button type="button" message="修改" (click)="openEditor(account)" [disabled]="saving()"></app-button>
+                <noah-button type="button" message="修改" (click)="openEditor(account)" [disabled]="saving()"></noah-button>
                 @if (account.managed && !account.self && account.status === 'active') {
-                  <app-button type="button" variant="secondary" message="停用" (click)="confirmDisable(account)" [disabled]="saving()"></app-button>
+                  <noah-button type="button" variant="secondary" message="停用" (click)="confirmDisable(account)" [disabled]="saving()"></noah-button>
                 } @else if (account.managed && !account.self) {
-                  <app-button type="button" variant="secondary" message="恢復" (click)="restore(account)" [disabled]="saving()"></app-button>
+                  <noah-button type="button" variant="secondary" message="恢復" (click)="restore(account)" [disabled]="saving()"></noah-button>
                 }
               </div>
             </div>
@@ -218,8 +179,8 @@
                 <h2>停用 {{ target.displayName }}？</h2>
                 <p>停用後無法登入。之後可以在這裡恢復。</p>
                 <div class="actions u-flex">
-                  <app-button type="button" variant="danger" message="確認停用" (click)="disable()" [disabled]="saving()"></app-button>
-                  <app-button type="button" variant="secondary" message="取消" (click)="disableTarget.set(null)" [disabled]="saving()"></app-button>
+                  <noah-button type="button" variant="danger" message="確認停用" (click)="disable()" [disabled]="saving()"></noah-button>
+                  <noah-button type="button" variant="secondary" message="取消" (click)="disableTarget.set(null)" [disabled]="saving()"></noah-button>
                 </div>
               </section>
             } @else {
@@ -320,20 +281,12 @@
             }
             }
           } @else if (selectedNumber()) {
-            <div class="roster-head">
-            <div class="roster-head__title">
-              <h1>員工資料</h1>
-            </div>
-            <ng-container [ngTemplateOutlet]="breadcrumb" />
-          </div>
+            <noah-page-heading title="員工資料" [breadcrumbs]="breadcrumbs()" />
           <p class="empty">這筆員工資料不在目前的名單裡。</p>
           } @else {
-            <div class="roster-head">
-              <div class="roster-head__title">
-                <h1>員工名冊</h1>
+            <noah-page-heading title="員工名冊" [breadcrumbs]="breadcrumbs()" />
+            <div class="page-heading-details">
                 @if (rosterSummary()) { <p>{{ rosterSummary() }}</p> }
-              </div>
-              <ng-container [ngTemplateOutlet]="breadcrumb" />
             </div>
             <form class="roster-bar" (ngSubmit)="search()">
               <select class="bar-control" [formControl]="departmentFilter" aria-label="部門">
@@ -348,8 +301,8 @@
                   <option [value]="title">{{ title }}</option>
                 }
               </select>
-              <input class="bar-control roster-bar__search" [formControl]="query" type="search" maxlength="100" placeholder="姓名或編號" aria-label="搜尋">
-              <app-button type="button" message="新增員工" (click)="openEditor()" [disabled]="saving()"></app-button>
+              <input noahInput class="bar-control roster-bar__search" [formControl]="query" type="search" maxlength="100" placeholder="姓名或編號" aria-label="搜尋">
+              <noah-button type="button" message="新增員工" (click)="openEditor()" [disabled]="saving()"></noah-button>
             </form>
             @if (listError()) {
               <p class="error" role="alert">{{ listError() }}</p>
@@ -384,7 +337,7 @@
                         <td>{{ account.jobTitle || '—' }}</td>
                         <td><span class="status" [class.status--off]="account.status === 'inactive'">{{ account.status === 'inactive' ? '已停用' : '在職' }}</span></td>
                         <td>
-                          <app-button type="button" variant="secondary" message="修改" (click)="openEditor(account)" [disabled]="saving()"></app-button>
+                          <noah-button type="button" variant="secondary" message="修改" (click)="openEditor(account)" [disabled]="saving()"></noah-button>
                         </td>
                       </tr>
                     }
@@ -394,28 +347,25 @@
             }
             @if (offset() || hasMore()) {
               <div class="pagination actions u-flex">
-                <app-button type="button" variant="secondary" message="上一頁" (click)="loadAccounts(offset() - pageSize())" [disabled]="!offset() || loading()"></app-button>
-                <app-button type="button" variant="secondary" message="下一頁" (click)="loadAccounts(offset() + pageSize())" [disabled]="!hasMore() || loading()"></app-button>
+                <noah-button type="button" variant="secondary" message="上一頁" (click)="loadAccounts(offset() - pageSize())" [disabled]="!offset() || loading()"></noah-button>
+                <noah-button type="button" variant="secondary" message="下一頁" (click)="loadAccounts(offset() + pageSize())" [disabled]="!hasMore() || loading()"></noah-button>
               </div>
             }
           }
         } @else if (section() === 'organization') {
-          <div class="roster-head">
-            <div class="roster-head__title">
-              <h1>組織架構</h1>
+          <noah-page-heading title="組織架構" [breadcrumbs]="breadcrumbs()" />
+          <div class="page-heading-details">
               @if (departments().length) { <p>{{ departments().length }} 個部門</p> }
-            </div>
-            <ng-container [ngTemplateOutlet]="breadcrumb" />
           </div>
           <div class="roster-bar">
-            <app-button type="button" message="新增部門" (click)="openDepartmentEditor()" [disabled]="saving()"></app-button>
+            <noah-button type="button" message="新增部門" (click)="openDepartmentEditor()" [disabled]="saving()"></noah-button>
           </div>
           @if (departmentEditor(); as edit) {
             <section class="panel record">
               <h2>{{ edit === 'create' ? '新增部門' : '修改部門' }}</h2>
               <form class="editor u-grid" [formGroup]="departmentForm" (ngSubmit)="saveDepartment()">
                 <app-field>部門名稱
-                  <input formControlName="name" maxlength="100" required>
+                  <input noahInput formControlName="name" maxlength="100" required>
                 </app-field>
                 <app-field>上層部門
                   <select formControlName="parentDepartmentId">
@@ -434,8 +384,8 @@
                   </select>
                 </app-field>
                 <div class="actions u-flex">
-                  <app-button type="submit" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="departmentForm.invalid || saving()"></app-button>
-                  <app-button type="button" variant="secondary" message="取消" (click)="closeDepartmentEditor()" [disabled]="saving()"></app-button>
+                  <noah-button type="submit" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="departmentForm.invalid || saving()"></noah-button>
+                  <noah-button type="button" variant="secondary" message="取消" (click)="closeDepartmentEditor()" [disabled]="saving()"></noah-button>
                 </div>
               </form>
             </section>
@@ -445,8 +395,8 @@
               <h2>刪除 {{ department.name }}？</h2>
               <p>刪除後無法復原。仍有員工或下層部門時不能刪。</p>
               <div class="actions u-flex">
-                <app-button type="button" variant="danger" message="確認刪除" (click)="deleteDepartment()" [disabled]="saving()"></app-button>
-                <app-button type="button" variant="secondary" message="取消" (click)="deleteDepartmentTarget.set(null)" [disabled]="saving()"></app-button>
+                <noah-button type="button" variant="danger" message="確認刪除" (click)="deleteDepartment()" [disabled]="saving()"></noah-button>
+                <noah-button type="button" variant="secondary" message="取消" (click)="deleteDepartmentTarget.set(null)" [disabled]="saving()"></noah-button>
               </div>
             </section>
           }
@@ -475,9 +425,9 @@
                       <td>{{ row.department.employeeCount }}</td>
                       <td>
                         <div class="actions u-flex">
-                          <app-button type="button" variant="secondary" message="修改" (click)="openDepartmentEditor(row.department)" [disabled]="saving()"></app-button>
+                          <noah-button type="button" variant="secondary" message="修改" (click)="openDepartmentEditor(row.department)" [disabled]="saving()"></noah-button>
                           @if (canDeleteDepartment(row.department)) {
-                            <app-button type="button" variant="secondary" message="刪除" (click)="confirmDeleteDepartment(row.department)" [disabled]="saving()"></app-button>
+                            <noah-button type="button" variant="secondary" message="刪除" (click)="confirmDeleteDepartment(row.department)" [disabled]="saving()"></noah-button>
                           }
                         </div>
                       </td>
@@ -488,12 +438,9 @@
             </app-table>
           }
         } @else if (dutyKind()) {
-          <div class="roster-head">
-            <div class="roster-head__title">
-              <h1>{{ dutyPageTitle(openedDuty()) }}</h1>
+          <noah-page-heading [title]="dutyPageTitle(openedDuty())" [breadcrumbs]="breadcrumbs()" />
+          <div class="page-heading-details">
               @if (dutyCount() !== null) { <p>{{ dutyCount() }} 筆</p> }
-            </div>
-            <ng-container [ngTemplateOutlet]="breadcrumb" />
           </div>
           <app-duty-board [kind]="openedDuty()" [people]="people()" [listTick]="dutyListTick()" [routeView]="dutyView()" [routeId]="dutyRecordId()" (editing)="dutyEditing.set($event)" (recordCount)="dutyCount.set($event)" />
         }

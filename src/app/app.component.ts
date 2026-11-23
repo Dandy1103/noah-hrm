@@ -1,5 +1,5 @@
+import { NoahBreadcrumb, NoahButtonComponent, NoahInputDirective, NoahPageHeadingComponent, NoahSidebarComponent } from '@dandy1103/ui';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
@@ -8,7 +8,6 @@ import { DutyBoardComponent } from './features/duty/duty-board.component';
 import type { DutyKind } from './features/duty/duty-board.component';
 import { HeaderComponent } from './layout/header/header.component';
 import { NavbarComponent } from './layout/navbar/navbar.component';
-import { ButtonComponent } from './shared/button/button.component';
 import { DateFieldComponent } from './shared/date-field/date-field.component';
 import { FieldComponent } from './shared/field/field.component';
 import { TableComponent } from './shared/table/table.component';
@@ -98,7 +97,7 @@ interface HrmScreen {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NgTemplateOutlet, ReactiveFormsModule, HeaderComponent, NavbarComponent, DutyBoardComponent, ButtonComponent, DateFieldComponent, FieldComponent, TableComponent],
+  imports: [NoahInputDirective, NoahSidebarComponent, NoahPageHeadingComponent, NoahButtonComponent, RouterOutlet, ReactiveFormsModule, HeaderComponent, NavbarComponent, DutyBoardComponent, DateFieldComponent, FieldComponent, TableComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
@@ -119,6 +118,12 @@ export class AppComponent {
     { value: 'admin', label: '人資' },
     { value: 'manager', label: '主管' },
     { value: 'employee', label: '員工' },
+  ];
+
+  readonly sideSections = [
+    { title: '人員', links: [{ label: '員工', path: '/employees' }, { label: '組織', path: '/organization' }] },
+    { title: '出勤', links: [{ label: '出勤紀錄', path: '/attendance' }, { label: '加班', path: '/overtime' }] },
+    { title: '假勤', links: [{ label: '請假', path: '/leave' }, { label: '出差', path: '/trip' }] },
   ];
 
   readonly mountedInPortal = new URL(document.baseURI).pathname === '/hrm/';
@@ -212,6 +217,15 @@ export class AppComponent {
     if (selectedNumber) return [{ label: '員工', go: 'employees' }, { label: '員工資料' }];
     return [{ label: '員工' }];
   });
+
+  readonly breadcrumbs = computed<NoahBreadcrumb[]>(() => [
+    { label: '首頁', href: this.portalHomeUrl },
+    { label: '人資管理', route: '/employees' },
+    ...this.trail().map(({ label, go }) => ({
+      label,
+      route: go === 'person' ? this.personCrumbRoute() : go ? '/' + go : undefined,
+    })),
+  ]);
 
   readonly form = this.formBuilder.group({
     nationalId: ['', Validators.pattern(/^[a-z][12][0-9]{8}$/i)],
@@ -592,16 +606,6 @@ export class AppComponent {
     this.section.set(section);
   }
 
-  showEmployees() {
-    this.applySection('employees');
-    this.rememberSection('employees');
-  }
-
-  showOrganization() {
-    this.applySection('organization');
-    this.rememberSection('organization');
-  }
-
   openedDuty(): DutyKind {
     return this.dutyKind() ?? 'attendance';
   }
@@ -618,16 +622,9 @@ export class AppComponent {
     return this.dutyLabel(section);
   }
 
-  showDuty(section: DutyKind) {
-    this.applySection(section);
-    this.rememberSection(section);
-  }
-
-  followCrumb(step: CrumbStep['go']): void {
-    if (step === 'employees') this.showEmployees();
-    else if (step === 'organization') this.showOrganization();
-    else if (step === 'person') this.closeEditor();
-    else if (step === 'attendance' || step === 'leave' || step === 'overtime' || step === 'trip') this.showDuty(step);
+  private personCrumbRoute(): string | undefined {
+    const editor = this.editor();
+    return editor && editor !== 'create' ? '/employees/' + editor.employeeNumber : undefined;
   }
 
   private pageOffset(): number {

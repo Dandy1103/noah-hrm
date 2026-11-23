@@ -6,7 +6,7 @@
 }
 
 <div class="roster-bar">
-  <app-button type="button" [message]="'新增' + title()" (click)="openCreate()" [disabled]="saving()"></app-button>
+  <noah-button type="button" [message]="'新增' + title()" (click)="openCreate()" [disabled]="saving()"></noah-button>
 </div>
 
 @if (editor(); as edit) {
@@ -29,13 +29,13 @@
             <span class="hint">同一天一位員工只記一筆。</span>
           </app-field>
           <app-field>上班
-            <input formControlName="clockIn" type="time" step="60">
+            <input noahInput formControlName="clockIn" type="time" step="60">
           </app-field>
           <app-field>下班
-            <input formControlName="clockOut" type="time" step="60">
+            <input noahInput formControlName="clockOut" type="time" step="60">
           </app-field>
           <app-field>備註
-            <input formControlName="note" maxlength="200" autocomplete="off">
+            <input noahInput formControlName="note" maxlength="200" autocomplete="off">
           </app-field>
         }
         @case ('leave') {
@@ -53,7 +53,7 @@
             <app-date-field formControlName="endsOn"></app-date-field>
           </app-field>
           <app-field>備註
-            <input formControlName="note" maxlength="200" autocomplete="off">
+            <input noahInput formControlName="note" maxlength="200" autocomplete="off">
           </app-field>
         }
         @case ('overtime') {
@@ -61,18 +61,18 @@
             <app-date-field formControlName="workDate"></app-date-field>
           </app-field>
           <app-field>開始
-            <input formControlName="startsAt" type="time" step="60" required>
+            <input noahInput formControlName="startsAt" type="time" step="60" required>
           </app-field>
           <app-field>結束
-            <input formControlName="endsAt" type="time" step="60" required>
+            <input noahInput formControlName="endsAt" type="time" step="60" required>
           </app-field>
           <app-field>事由
-            <input formControlName="reason" maxlength="200" autocomplete="off" required>
+            <input noahInput formControlName="reason" maxlength="200" autocomplete="off" required>
           </app-field>
         }
         @case ('trip') {
           <app-field>地點
-            <input formControlName="place" maxlength="100" autocomplete="off" required>
+            <input noahInput formControlName="place" maxlength="100" autocomplete="off" required>
           </app-field>
           <app-field>開始
             <app-date-field formControlName="startsOn"></app-date-field>
@@ -81,14 +81,14 @@
             <app-date-field formControlName="endsOn"></app-date-field>
           </app-field>
           <app-field>事由
-            <input formControlName="reason" maxlength="200" autocomplete="off" required>
+            <input noahInput formControlName="reason" maxlength="200" autocomplete="off" required>
           </app-field>
         }
       }
 
       <div class="actions u-flex">
-        <app-button type="submit" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="!canSave() || saving()"></app-button>
-        <app-button type="button" variant="secondary" message="取消" (click)="closeEditor()" [disabled]="saving()"></app-button>
+        <noah-button type="submit" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="!canSave() || saving()"></noah-button>
+        <noah-button type="button" variant="secondary" message="取消" (click)="closeEditor()" [disabled]="saving()"></noah-button>
       </div>
     </form>
   </section>
@@ -99,8 +99,8 @@
     <h2>刪除這筆{{ title() }}？</h2>
     <p>{{ target.displayName }}，刪除後無法復原。</p>
     <div class="actions u-flex">
-      <app-button type="button" variant="danger" message="確認刪除" (click)="remove()" [disabled]="saving()"></app-button>
-      <app-button type="button" variant="secondary" message="取消" (click)="deleteTarget.set(null)" [disabled]="saving()"></app-button>
+      <noah-button type="button" variant="danger" message="確認刪除" (click)="remove()" [disabled]="saving()"></noah-button>
+      <noah-button type="button" variant="secondary" message="取消" (click)="deleteTarget.set(null)" [disabled]="saving()"></noah-button>
     </div>
   </section>
 }
@@ -188,8 +188,8 @@
             }
             <td>
               <div class="actions u-flex">
-                <app-button type="button" variant="secondary" message="修改" (click)="openEditor(record)" [disabled]="saving()"></app-button>
-                <app-button type="button" variant="secondary" message="刪除" (click)="confirmDelete(record)" [disabled]="saving()"></app-button>
+                <noah-button type="button" variant="secondary" message="修改" (click)="openEditor(record)" [disabled]="saving()"></noah-button>
+                <noah-button type="button" variant="secondary" message="刪除" (click)="confirmDelete(record)" [disabled]="saving()"></noah-button>
               </div>
             </td>
           </tr>

@@ -34,101 +34,6 @@ app-navbar {
   min-height: 0;
 }
 
-.crumb {
-  margin-bottom: 12px;
-}
-
-.crumb ol {
-  display: flex;
-  align-items: center;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 16px;
-}
-
-.crumb li + li::before {
-  content: "/";
-  margin: 0 8px;
-  color: var(--color-text-secondary);
-}
-
-.crumb a,
-.crumb button {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font: inherit;
-  font-size: 16px;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.crumb a:hover,
-.crumb button:hover {
-  text-decoration: underline;
-}
-
-.crumb a:focus-visible,
-.crumb button:focus-visible {
-  outline: 2px solid var(--color-info);
-  outline-offset: 2px;
-}
-
-.crumb [aria-current="page"] {
-  color: var(--color-text-primary);
-  font-weight: 600;
-}
-
-.sidenav {
-  width: 196px;
-  flex-shrink: 0;
-  padding: 20px 12px 32px;
-  border-right: 1px solid var(--color-border);
-  background: #fff;
-}
-
-.sidenav__group + .sidenav__group {
-  margin-top: 20px;
-}
-
-.sidenav__group p {
-  margin: 0 0 4px;
-  padding: 0 12px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.sidenav button {
-  display: block;
-  width: 100%;
-  height: 40px;
-  margin: 0;
-  padding: 0 12px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: 16px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.sidenav button:hover {
-  background: rgb(15 23 42 / 5%);
-}
-
-.sidenav button.is-active,
-.sidenav button.is-active:hover {
-  background: var(--color-surface-selected);
-  color: var(--color-primary);
-  font-weight: 600;
-  box-shadow: inset 2px 0 0 var(--color-primary);
-}
-
 .workspace {
   flex: 1;
   min-width: 0;
@@ -217,35 +122,23 @@ h1 {
   margin-bottom: 12px;
 }
 
-.page-head p,
-.roster-head p {
+.page-head p {
   margin: 0;
   color: #64748b;
   font-size: 16px;
 }
 
-.roster-head {
-  margin-bottom: 12px;
-}
-
-.roster-head__title {
+.page-heading-details {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding-left: 12px;
-  border-left: 3px solid var(--color-primary);
+  margin: -16px 0 16px;
+  padding-left: 16px;
+  color: var(--color-text-secondary);
 }
 
-.roster-head__title h1,
-.roster-head__title p {
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.roster-head .crumb {
-  margin-top: 4px;
-  margin-bottom: 0;
+.page-heading-details p {
+  margin: 0;
 }
 
 .roster-bar {
@@ -479,30 +372,6 @@ select.bar-control {
 @media (max-width: 720px) {
   .shell {
     flex-direction: column;
-  }
-
-  .sidenav {
-    display: flex;
-    width: auto;
-    gap: 16px;
-    overflow-x: auto;
-    padding: 12px 16px;
-    border-right: 0;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .sidenav__group {
-    flex: 0 0 auto;
-  }
-
-  .sidenav__group + .sidenav__group {
-    margin-top: 0;
-  }
-
-  .sidenav button {
-    width: auto;
-    padding: 0 12px;
-    white-space: nowrap;
   }
 
   .workspace,
