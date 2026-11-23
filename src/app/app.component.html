@@ -2,8 +2,6 @@
 <app-header
   [displayName]="displayName()"
   [signedIn]="access() === 'allowed' || access() === 'denied'"
-  [mountedInPortal]="mountedInPortal"
-  [changePasswordUrl]="changePasswordUrl"
 />
 
 @switch (access()) {

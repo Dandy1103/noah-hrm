@@ -2,15 +2,21 @@
 
 ## 本機開發
 
-安裝 Node.js 20.12 以上及 Docker Desktop。等 Docker Desktop 顯示 Engine running 後，在 noah-hrm 執行。
+本機登入跟 Portal／線上同一套 Cloud-IAM。完整步驟看 Portal 的 [本機登入說明](https://github.com/Dandy1103/noah-portal/blob/develop/docs/DEPLOYMENT.md#本機登入跟線上同一套-cloud-iam)（本機檔案在 `noah-portal/docs/DEPLOYMENT.md`）。
 
-~~~cmd
+```cmd
+copy .env.local.example .env.local
+```
+
+填 `OIDC_CLIENT_SECRET`（Cloud-IAM → Clients → `noah-hrm` → Credentials）和 `DATABASE_URL`。Cloud-IAM 要允許 `http://localhost:4201/auth/callback`。
+
+```cmd
 npm start
-~~~
+```
 
-開啟 [HRM](http://localhost:4201/)。Angular 與 Spring Boot（3001）會獨立啟動，並和 Portal 共用本機 Keycloak（8081）與 PostgreSQL（5433）。Windows 沒有 JDK 21 時會下載到專案的 tmp 目錄。測試登入字號為 H247386514（測試專用），初始密碼在 .env.shared-keycloak 的 KEYCLOAK_DEMO_PASSWORD。登入後點「變更密碼」，換好的密碼可登入兩邊。
+開 [HRM](http://localhost:4201/)。應跳 Cloud-IAM，不是本機 8081。換前端 port：`$env:HRM_PORT = "4202"`，並在 Cloud-IAM 補對應 callback。後端 port 可用 `HRM_BACKEND_PORT`。
 
-自行指定本機網頁 port 時，在 PowerShell 設定 $env:HRM_PORT = "4202" 再執行 npm start。使用預設的本機 Keycloak 時，啟動程式會登錄相符的回呼。後端 port 可用 HRM_BACKEND_PORT 設定。
+沒有 `.env.local` 時才會退回本機 Keycloak（8081）備援。
 
 ## 資料庫遷移
 

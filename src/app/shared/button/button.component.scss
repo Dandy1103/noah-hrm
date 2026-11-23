@@ -6,7 +6,7 @@
     padding: 0 16px;
     border: 1px solid transparent;
     border-radius: 4px;
-    background: #001430;
+    background: var(--color-primary);
     color: #fff;
     font: inherit;
     font-size: 16px;
@@ -18,7 +18,7 @@
 
 .app-button--secondary {
     background: #fff;
-    color: #001430;
+    color: var(--color-primary);
     border-color: #e2e8f0;
 }
 

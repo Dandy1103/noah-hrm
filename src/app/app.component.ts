@@ -133,7 +133,6 @@ export class AppComponent {
   readonly loginUrl = '/auth/login?' + new URLSearchParams({
     next: this.signInError || this.signedOut ? this.loginParams.get('next') ?? '/' : location.pathname + location.search,
   });
-  readonly changePasswordUrl = '/auth/change-password?' + new URLSearchParams({ next: location.pathname + location.search });
   readonly access = signal<'loading' | 'allowed' | 'signed-out' | 'denied' | 'unavailable'>('loading');
   readonly displayName = signal('');
   readonly accessError = signal('請稍後重新整理。');

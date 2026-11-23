@@ -2,6 +2,24 @@ router-outlet {
   display: none;
 }
 
+:host {
+  display: block;
+}
+
+app-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: #fff;
+}
+
+app-navbar {
+  position: sticky;
+  top: var(--header-height);
+  z-index: 30;
+  background: #fff;
+}
+
 .app {
   display: grid;
   grid-template-rows: auto 1fr;
@@ -164,7 +182,7 @@ router-outlet {
   width: 40%;
   height: 100%;
   border-radius: inherit;
-  background: #001430;
+  background: var(--color-primary);
   animation: access-mask-slide 1.1s ease-in-out infinite;
 }
 
@@ -215,7 +233,7 @@ h1 {
   align-items: center;
   gap: 12px;
   padding-left: 12px;
-  border-left: 3px solid #001430;
+  border-left: 3px solid var(--color-primary);
 }
 
 .roster-head__title h1,
@@ -260,7 +278,7 @@ h1 {
   padding: 0;
   border: 0;
   background: none;
-  color: #001430;
+  color: var(--color-primary);
   font: inherit;
   font-weight: 600;
   text-align: left;
@@ -441,7 +459,7 @@ select.bar-control {
 }
 
 .text-link {
-  color: #001430;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
