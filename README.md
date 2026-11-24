@@ -14,7 +14,7 @@ copy .env.local.example .env.local
 npm start
 ```
 
-開 [HRM](http://localhost:4201/)。應跳 Cloud-IAM，不是本機 8081。換前端 port：`$env:HRM_PORT = "4202"`，並在 Cloud-IAM 補對應 callback。後端 port 可用 `HRM_BACKEND_PORT`。
+開 [HRM](http://localhost:4201/)。登入走本機 `noah-core`（`127.0.0.1:8080`）和 Cloud-IAM，不是本機 8081。先啟動 core。換前端 port：`$env:HRM_PORT = "4202"`，並在 Cloud-IAM 的 `noah-core` client 補 `http://localhost:4202/login/oauth2/code/noah`。後端 port 可用 `HRM_BACKEND_PORT`。
 
 沒有 `.env.local` 時才會退回本機 Keycloak（8081）備援。
 

@@ -47,6 +47,12 @@ final class HrmIdentity {
         return session == null ? null : (User) session.getAttribute(USER);
     }
 
+    void adopt(HttpServletRequest request, String displayName, String issuer, String subject) {
+        if (displayName == null || displayName.isBlank()) displayName = "員工";
+        if (issuer == null || issuer.isBlank() || subject == null || subject.isBlank()) return;
+        request.getSession(true).setAttribute(USER, new User(displayName, issuer, subject));
+    }
+
     String pendingDestination(HttpServletRequest request, String state) {
         var session = request.getSession(false);
         if (session == null || state == null) return "/";
