@@ -1,14 +1,11 @@
-import { NoahBreadcrumb, NoahButtonComponent, NoahInputDirective, NoahPageHeadingComponent, NoahSidebarComponent } from '@dandy1103/ui';
+import { NoahBreadcrumb, NoahButtonComponent, NoahInputDirective, NoahPageHeadingComponent } from '@dandy1103/ui';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { Observable, catchError, debounceTime, filter, finalize, forkJoin, of } from 'rxjs';
 import { DutyBoardComponent } from './features/duty/duty-board.component';
 import type { DutyKind } from './features/duty/duty-board.component';
-import { HeaderComponent } from './layout/header/header.component';
-import { NavbarComponent } from './layout/navbar/navbar.component';
-import { loadCatalog, NavCatalog, portalEntry, sideSections as catalogSideSections } from './layout/navbar/nav-catalog';
 import { signedIn } from './require-session';
 import { DateFieldComponent } from './shared/date-field/date-field.component';
 import { FieldComponent } from './shared/field/field.component';
@@ -89,6 +86,7 @@ interface RecentLine {
 }
 
 type HrmSection = 'employees' | 'organization' | DutyKind;
+const HRM_ROOT = '/hrm';
 
 interface HrmScreen {
   section: HrmSection;
@@ -99,7 +97,7 @@ interface HrmScreen {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [NoahInputDirective, NoahSidebarComponent, NoahPageHeadingComponent, NoahButtonComponent, RouterOutlet, ReactiveFormsModule, HeaderComponent, NavbarComponent, DutyBoardComponent, DateFieldComponent, FieldComponent, TableComponent],
+  imports: [NoahInputDirective, NoahPageHeadingComponent, NoahButtonComponent, RouterOutlet, ReactiveFormsModule, DutyBoardComponent, DateFieldComponent, FieldComponent, TableComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
@@ -122,9 +120,6 @@ export class AppComponent {
     { value: 'employee', label: '員工' },
   ];
 
-  private readonly navCatalog = signal<NavCatalog | null>(null);
-  readonly catalogReady = signal(false);
-  readonly sideSections = computed(() => catalogSideSections(this.navCatalog(), 'noah-hrm'));
   private readonly loginParams = new URLSearchParams(location.search);
   readonly signInError = this.loginParams.get('authError');
   readonly signedOut = this.loginParams.get('signedOut') === '1';
@@ -212,12 +207,12 @@ export class AppComponent {
   });
 
   get portalHomeUrl(): string {
-    return portalEntry(this.navCatalog());
+    return '/portal';
   }
 
   readonly breadcrumbs = computed<NoahBreadcrumb[]>(() => [
     { label: '首頁', href: this.portalHomeUrl },
-    { label: '人資管理', route: '/employees' },
+    { label: '人資管理', route: `${HRM_ROOT}/employees` },
     ...this.trail().map(({ label, go }) => ({
       label,
       route: go === 'person' ? this.personCrumbRoute() : go ? '/' + go : undefined,
@@ -248,9 +243,6 @@ export class AppComponent {
 
   constructor() {
     void signedIn();
-    const request = new AbortController();
-    inject(DestroyRef).onDestroy(() => request.abort());
-    void loadCatalog(request.signal).then((value) => this.navCatalog.set(value)).finally(() => this.catalogReady.set(true));
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => this.followRoute());
     this.openCanonicalUrl();
     if (this.pathSection() && !new URLSearchParams(location.search).has('section')) this.followRoute();
@@ -452,9 +444,7 @@ export class AppComponent {
   }
 
   private pathSection(): HrmSection | null {
-    const base = new URL(document.baseURI).pathname.replace(/\/+$/, '');
-    const path = location.pathname.startsWith(base) ? location.pathname.slice(base.length) : location.pathname;
-    const name = path.split('/').filter(Boolean)[0] ?? '';
+    const name = this.pathParts()[0] ?? '';
     return this.isSection(name) ? name : null;
   }
 
@@ -477,7 +467,8 @@ export class AppComponent {
   private pathParts(): string[] {
     const base = new URL(document.baseURI).pathname.replace(/\/+$/, '');
     const path = location.pathname.startsWith(base) ? location.pathname.slice(base.length) : location.pathname;
-    return path.split('/').filter(Boolean).map((part) => decodeURIComponent(part));
+    const parts = path.split('/').filter(Boolean).map((part) => decodeURIComponent(part));
+    return parts[0] === HRM_ROOT.replace(/^\/+/, '') ? parts.slice(1) : parts;
   }
 
   private followRoute() {
@@ -651,7 +642,7 @@ export class AppComponent {
 
   private rememberSection(section: HrmSection) {
     const page = section === 'employees' ? this.pageParams().page : null;
-    this.router.navigate(['/', section], {
+    this.router.navigate([HRM_ROOT, section], {
       queryParams: { page, section: null },
       queryParamsHandling: 'merge',
       replaceUrl: true,
@@ -659,11 +650,11 @@ export class AppComponent {
   }
 
   openPerson(account: EmployeeAccount) {
-    this.router.navigate(['/employees', account.employeeNumber]);
+    this.router.navigate([HRM_ROOT, 'employees', account.employeeNumber]);
   }
 
   closePerson() {
-    this.router.navigate(['/employees'], { queryParamsHandling: 'merge', queryParams: { section: null } });
+    this.router.navigate([HRM_ROOT, 'employees'], { queryParamsHandling: 'merge', queryParams: { section: null } });
   }
 
   private loadPersonContext(number: string) {
@@ -854,8 +845,8 @@ export class AppComponent {
   }
 
   openEditor(account?: EmployeeAccount) {
-    if (account) this.router.navigate(['/employees', account.employeeNumber, 'edit']);
-    else this.router.navigate(['/employees', 'new']);
+    if (account) this.router.navigate([HRM_ROOT, 'employees', account.employeeNumber, 'edit']);
+    else this.router.navigate([HRM_ROOT, 'employees', 'new']);
   }
 
   private presentEmployeeEditor(account?: EmployeeAccount) {
@@ -891,15 +882,15 @@ export class AppComponent {
   closeEditor() {
     const editing = this.editor();
     if (editing && editing !== 'create') {
-      this.router.navigate(['/employees', editing.employeeNumber]);
+      this.router.navigate([HRM_ROOT, 'employees', editing.employeeNumber]);
       return;
     }
-    this.router.navigate(['/employees'], { queryParamsHandling: 'merge', queryParams: { section: null } });
+    this.router.navigate([HRM_ROOT, 'employees'], { queryParamsHandling: 'merge', queryParams: { section: null } });
   }
 
   openDepartmentEditor(department?: Department) {
-    if (department) this.router.navigate(['/organization', department.departmentId, 'edit']);
-    else this.router.navigate(['/organization', 'new']);
+    if (department) this.router.navigate([HRM_ROOT, 'organization', department.departmentId, 'edit']);
+    else this.router.navigate([HRM_ROOT, 'organization', 'new']);
   }
 
   private presentDepartmentEditor(department?: Department) {
@@ -915,7 +906,7 @@ export class AppComponent {
   }
 
   closeDepartmentEditor() {
-    this.router.navigate(['/organization']);
+    this.router.navigate([HRM_ROOT, 'organization']);
   }
 
   saveDepartment() {
@@ -1079,12 +1070,12 @@ export class AppComponent {
         }
         this.showToast(success);
         if (backToList) {
-          this.router.navigate(['/employees'], {
+          this.router.navigate([HRM_ROOT, 'employees'], {
             queryParamsHandling: 'merge',
             queryParams: { section: null, page: resetSearch ? null : this.pageParams().page },
           });
         } else if (place.section === 'organization' && place.view !== 'list') {
-          this.router.navigate(['/organization']);
+          this.router.navigate([HRM_ROOT, 'organization']);
         }
         if (resetSearch) {
           this.query.reset('', { emitEvent: false });

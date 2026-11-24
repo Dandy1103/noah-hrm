@@ -1,8 +1,4 @@
 <router-outlet />
-<app-header
-  [displayName]="displayName()"
-  [signedIn]="access() === 'allowed' || access() === 'denied'"
-/>
 
 @switch (access()) {
   @case ('loading') {
@@ -37,19 +33,7 @@
     </div>
   }
   @case ('allowed') {
-    @if (!catalogReady()) {
-      <div class="access-mask" role="progressbar" aria-label="正在載入">
-        <div class="access-mask__bar"></div>
-      </div>
-    } @else {
-    <div class="app">
-    <app-navbar />
-    <div class="shell">
-      @if (sideSections().length) {
-        <noah-sidebar [sections]="sideSections()" />
-      }
-
-      <main class="workspace">
+    <main class="workspace">
         @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
         @if ((section() === 'employees' || section() === 'organization' || dutyKind()) && peopleError()) {
           <p class="error" role="alert">{{ peopleError() }}</p>
@@ -451,12 +435,9 @@
           </div>
           <app-duty-board [kind]="openedDuty()" [people]="people()" [listTick]="dutyListTick()" [routeView]="dutyView()" [routeId]="dutyRecordId()" (editing)="dutyEditing.set($event)" (recordCount)="dutyCount.set($event)" />
         }
-      </main>
-    </div>
-    </div>
+    </main>
     @if (message()) {
       <p class="toast" role="status">{{ message() }}</p>
-    }
     }
   }
 }

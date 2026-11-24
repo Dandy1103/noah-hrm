@@ -10,6 +10,8 @@ import { DateFieldComponent } from '../../shared/date-field/date-field.component
 import { FieldComponent } from '../../shared/field/field.component';
 import { TableComponent } from '../../shared/table/table.component';
 
+const HRM_ROOT = '/hrm';
+
 export type DutyKind = 'attendance' | 'leave' | 'overtime' | 'trip';
 
 interface PersonOption {
@@ -216,20 +218,20 @@ export class DutyBoardComponent implements OnChanges, OnDestroy {
   }
 
   openCreate(): void {
-    this.router.navigate(['/', this.kind, 'new']);
+    this.router.navigate([HRM_ROOT, this.kind, 'new']);
   }
 
   openEditor(record: DutyRecord): void {
-    this.router.navigate(['/', this.kind, record.id, 'edit']);
+    this.router.navigate([HRM_ROOT, this.kind, record.id, 'edit']);
   }
 
   closeEditor(): void {
-    this.router.navigate(['/', this.kind]);
+    this.router.navigate([HRM_ROOT, this.kind]);
   }
 
   confirmDelete(record: DutyRecord): void {
     this.deleteTarget.set(record);
-    this.router.navigate(['/', this.kind]);
+    this.router.navigate([HRM_ROOT, this.kind]);
   }
 
   save(): void {
