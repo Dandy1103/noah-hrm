@@ -9,6 +9,7 @@ import type { DutyKind } from './features/duty/duty-board.component';
 import { HeaderComponent } from './layout/header/header.component';
 import { NavbarComponent } from './layout/navbar/navbar.component';
 import { loadCatalog, NavCatalog, portalEntry, sideSections as catalogSideSections } from './layout/navbar/nav-catalog';
+import { signedIn } from './require-session';
 import { DateFieldComponent } from './shared/date-field/date-field.component';
 import { FieldComponent } from './shared/field/field.component';
 import { TableComponent } from './shared/table/table.component';
@@ -246,6 +247,7 @@ export class AppComponent {
   });
 
   constructor() {
+    void signedIn();
     const request = new AbortController();
     inject(DestroyRef).onDestroy(() => request.abort());
     void loadCatalog(request.signal).then((value) => this.navCatalog.set(value)).finally(() => this.catalogReady.set(true));
