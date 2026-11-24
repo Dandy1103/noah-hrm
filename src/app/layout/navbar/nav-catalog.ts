@@ -99,6 +99,34 @@ export function fallbackGroups(self: string): NavGroup[] {
   return applyNav(FALLBACK, self);
 }
 
+export interface SideLink {
+  label: string;
+  path: string;
+}
+
+export interface SideSection {
+  title: string;
+  links: SideLink[];
+}
+
+export function sideSections(catalog: NavCatalog | null, self: string): SideSection[] {
+  if (!catalog) return [];
+  const group = catalog.groups.find((item) => item && item.app === self);
+  if (!group || !Array.isArray(group.sections)) return [];
+  const sections: SideSection[] = [];
+  for (const section of group.sections) {
+    if (!section || typeof section.title !== 'string' || !Array.isArray(section.links)) continue;
+    const links: SideLink[] = [];
+    for (const link of section.links) {
+      if (!link || typeof link.label !== 'string') continue;
+      const path = typeof link.path === 'string' ? link.path : '';
+      links.push({ label: link.label, path: path ? `/${path}` : '/' });
+    }
+    if (links.length) sections.push({ title: section.title, links });
+  }
+  return sections;
+}
+
 export function loadCatalog(signal: AbortSignal): Promise<NavCatalog | null> {
   return fetch(catalogUrl(), { signal })
     .then(async (response) => {

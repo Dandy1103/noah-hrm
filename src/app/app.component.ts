@@ -8,7 +8,7 @@ import { DutyBoardComponent } from './features/duty/duty-board.component';
 import type { DutyKind } from './features/duty/duty-board.component';
 import { HeaderComponent } from './layout/header/header.component';
 import { NavbarComponent } from './layout/navbar/navbar.component';
-import { loadCatalog, NavCatalog, portalEntry } from './layout/navbar/nav-catalog';
+import { loadCatalog, NavCatalog, portalEntry, sideSections as catalogSideSections } from './layout/navbar/nav-catalog';
 import { DateFieldComponent } from './shared/date-field/date-field.component';
 import { FieldComponent } from './shared/field/field.component';
 import { TableComponent } from './shared/table/table.component';
@@ -121,13 +121,8 @@ export class AppComponent {
     { value: 'employee', label: '員工' },
   ];
 
-  readonly sideSections = [
-    { title: '人員', links: [{ label: '員工', path: '/employees' }, { label: '組織', path: '/organization' }] },
-    { title: '出勤', links: [{ label: '出勤紀錄', path: '/attendance' }, { label: '加班', path: '/overtime' }] },
-    { title: '假勤', links: [{ label: '請假', path: '/leave' }, { label: '出差', path: '/trip' }] },
-  ];
-
   private readonly navCatalog = signal<NavCatalog | null>(null);
+  readonly sideSections = computed(() => catalogSideSections(this.navCatalog(), 'noah-hrm'));
   private readonly loginParams = new URLSearchParams(location.search);
   readonly signInError = this.loginParams.get('authError');
   readonly signedOut = this.loginParams.get('signedOut') === '1';

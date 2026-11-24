@@ -40,7 +40,9 @@
     <div class="app">
     <app-navbar />
     <div class="shell">
-      <noah-sidebar [sections]="sideSections" />
+      @if (sideSections().length) {
+        <noah-sidebar [sections]="sideSections()" />
+      }
 
       <main class="workspace">
         @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
