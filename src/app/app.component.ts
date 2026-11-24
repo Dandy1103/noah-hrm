@@ -1,6 +1,6 @@
 import { NoahBreadcrumb, NoahButtonComponent, NoahInputDirective, NoahPageHeadingComponent, NoahSidebarComponent } from '@dandy1103/ui';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { Observable, catchError, debounceTime, filter, finalize, forkJoin, of } from 'rxjs';
@@ -8,6 +8,7 @@ import { DutyBoardComponent } from './features/duty/duty-board.component';
 import type { DutyKind } from './features/duty/duty-board.component';
 import { HeaderComponent } from './layout/header/header.component';
 import { NavbarComponent } from './layout/navbar/navbar.component';
+import { loadCatalog, NavCatalog, portalEntry } from './layout/navbar/nav-catalog';
 import { DateFieldComponent } from './shared/date-field/date-field.component';
 import { FieldComponent } from './shared/field/field.component';
 import { TableComponent } from './shared/table/table.component';
@@ -126,12 +127,7 @@ export class AppComponent {
     { title: '假勤', links: [{ label: '請假', path: '/leave' }, { label: '出差', path: '/trip' }] },
   ];
 
-  readonly mountedInPortal = new URL(document.baseURI).pathname === '/hrm/';
-  readonly portalHomeUrl = this.mountedInPortal
-    ? '/'
-    : ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
-      ? 'http://localhost:4200/'
-      : 'https://noahportal.dandy-cheng.com/';
+  private readonly navCatalog = signal<NavCatalog | null>(null);
   private readonly loginParams = new URLSearchParams(location.search);
   readonly signInError = this.loginParams.get('authError');
   readonly signedOut = this.loginParams.get('signedOut') === '1';
@@ -218,6 +214,10 @@ export class AppComponent {
     return [{ label: '員工' }];
   });
 
+  get portalHomeUrl(): string {
+    return portalEntry(this.navCatalog());
+  }
+
   readonly breadcrumbs = computed<NoahBreadcrumb[]>(() => [
     { label: '首頁', href: this.portalHomeUrl },
     { label: '人資管理', route: '/employees' },
@@ -250,6 +250,9 @@ export class AppComponent {
   });
 
   constructor() {
+    const request = new AbortController();
+    inject(DestroyRef).onDestroy(() => request.abort());
+    void loadCatalog(request.signal).then((value) => this.navCatalog.set(value));
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => this.followRoute());
     this.openCanonicalUrl();
     if (this.pathSection() && !new URLSearchParams(location.search).has('section')) this.followRoute();
