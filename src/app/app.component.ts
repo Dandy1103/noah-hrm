@@ -122,6 +122,7 @@ export class AppComponent {
   ];
 
   private readonly navCatalog = signal<NavCatalog | null>(null);
+  readonly catalogReady = signal(false);
   readonly sideSections = computed(() => catalogSideSections(this.navCatalog(), 'noah-hrm'));
   private readonly loginParams = new URLSearchParams(location.search);
   readonly signInError = this.loginParams.get('authError');
@@ -247,7 +248,7 @@ export class AppComponent {
   constructor() {
     const request = new AbortController();
     inject(DestroyRef).onDestroy(() => request.abort());
-    void loadCatalog(request.signal).then((value) => this.navCatalog.set(value));
+    void loadCatalog(request.signal).then((value) => this.navCatalog.set(value)).finally(() => this.catalogReady.set(true));
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => this.followRoute());
     this.openCanonicalUrl();
     if (this.pathSection() && !new URLSearchParams(location.search).has('section')) this.followRoute();

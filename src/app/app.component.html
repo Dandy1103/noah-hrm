@@ -37,6 +37,11 @@
     </div>
   }
   @case ('allowed') {
+    @if (!catalogReady()) {
+      <div class="access-mask" role="progressbar" aria-label="正在載入">
+        <div class="access-mask__bar"></div>
+      </div>
+    } @else {
     <div class="app">
     <app-navbar />
     <div class="shell">
@@ -451,6 +456,7 @@
     </div>
     @if (message()) {
       <p class="toast" role="status">{{ message() }}</p>
+    }
     }
   }
 }
