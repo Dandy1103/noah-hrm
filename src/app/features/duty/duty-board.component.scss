@@ -24,7 +24,7 @@
 .panel {
   margin: 0 0 16px;
   padding: 20px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   background: white;
 }
@@ -50,13 +50,13 @@
 
 .error {
   margin: 0 0 12px;
-  color: #b91c1c;
+  color: var(--color-danger-strong);
   font-size: 16px;
 }
 
 .hint {
   margin: 0;
-  color: #475569;
+  color: var(--color-text-secondary);
   font-size: 16px;
   font-weight: 400;
 }
@@ -64,9 +64,9 @@
 .empty {
   margin: 0;
   padding: 32px 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   background: white;
-  color: #64748b;
+  color: var(--color-text-secondary);
   text-align: center;
 }
