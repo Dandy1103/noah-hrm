@@ -127,14 +127,30 @@ export function sideSections(catalog: NavCatalog | null, self: string): SideSect
   return sections;
 }
 
-export function loadCatalog(signal: AbortSignal): Promise<NavCatalog | null> {
-  return fetch(catalogUrl(), { signal })
-    .then(async (response) => {
-      if (!response.ok) return null;
-      const body: unknown = await response.json();
-      return isNavCatalog(body) ? body : null;
-    })
-    .catch(() => null);
+let catalogRequest: Promise<NavCatalog | null> | null = null;
+
+export function loadCatalog(signal?: AbortSignal): Promise<NavCatalog | null> {
+  if (signal?.aborted) return Promise.resolve(null);
+  if (!catalogRequest) {
+    catalogRequest = fetch(catalogUrl())
+      .then(async (response) => {
+        if (!response.ok) {
+          catalogRequest = null;
+          return null;
+        }
+        const body: unknown = await response.json();
+        if (!isNavCatalog(body)) {
+          catalogRequest = null;
+          return null;
+        }
+        return body;
+      })
+      .catch(() => {
+        catalogRequest = null;
+        return null;
+      });
+  }
+  return catalogRequest;
 }
 
 export function applyNav(catalog: NavCatalog, self: string): NavGroup[] {
