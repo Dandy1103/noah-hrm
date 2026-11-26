@@ -14,12 +14,7 @@
     <h2>{{ edit === 'create' ? '新增' : '修改' }}{{ title() }}</h2>
     <form class="editor u-grid" [formGroup]="form" (ngSubmit)="save()">
       <app-field>員工
-        <select formControlName="employeeNumber" required>
-          <option value="">請選擇</option>
-          @for (person of staff(); track person.employeeNumber) {
-            <option [value]="person.employeeNumber">{{ person.displayName }}（{{ person.employeeNumber }}）{{ person.status === 'inactive' ? '，已停用' : '' }}</option>
-          }
-        </select>
+        <app-select-field formControlName="employeeNumber" [options]="staffSelectOptions()" />
       </app-field>
 
       @switch (kind) {
@@ -40,11 +35,7 @@
         }
         @case ('leave') {
           <app-field>假別
-            <select formControlName="leaveType" required>
-              @for (item of leaveTypes; track item.value) {
-                <option [value]="item.value">{{ item.label }}</option>
-              }
-            </select>
+            <app-select-field formControlName="leaveType" [options]="leaveTypes" />
           </app-field>
           <app-field>開始
             <app-date-field formControlName="startsOn"></app-date-field>

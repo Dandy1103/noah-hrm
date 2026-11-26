@@ -6,8 +6,10 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { NoahButtonComponent, NoahInputDirective } from '@dandy1103/ui';
+import type { NoahSelectOption } from '@dandy1103/ui';
 import { DateFieldComponent } from '../../shared/date-field/date-field.component';
 import { FieldComponent } from '../../shared/field/field.component';
+import { SelectFieldComponent } from '../../shared/select-field/select-field.component';
 import { TableComponent } from '../../shared/table/table.component';
 
 const HRM_ROOT = '/hrm';
@@ -40,7 +42,7 @@ interface DutyRecord {
 @Component({
   selector: 'app-duty-board',
   standalone: true,
-  imports: [ReactiveFormsModule, NoahButtonComponent, NoahInputDirective, DateFieldComponent, FieldComponent, TableComponent],
+  imports: [ReactiveFormsModule, NoahButtonComponent, NoahInputDirective, DateFieldComponent, FieldComponent, SelectFieldComponent, TableComponent],
   templateUrl: './duty-board.component.html',
   styleUrl: './duty-board.component.scss',
 })
@@ -119,6 +121,16 @@ export class DutyBoardComponent implements OnChanges, OnDestroy {
   staff(): PersonOption[] {
     const selected = this.form.controls.employeeNumber.value;
     return this.people.filter((person) => person.status === 'active' || person.employeeNumber === selected);
+  }
+
+  staffSelectOptions(): NoahSelectOption[] {
+    return [
+      { value: '', label: '請選擇' },
+      ...this.staff().map((person) => ({
+        value: person.employeeNumber,
+        label: `${person.displayName}（${person.employeeNumber}）${person.status === 'inactive' ? '，已停用' : ''}`,
+      })),
+    ];
   }
 
   canSave(): boolean {

@@ -34,55 +34,40 @@
   }
   @case ('allowed') {
     <main class="workspace">
-        @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+        @if (error() && editor() !== 'create') { <p class="error" role="alert">{{ error() }}</p> }
         @if ((section() === 'employees' || section() === 'organization' || dutyKind()) && peopleError()) {
           <p class="error" role="alert">{{ peopleError() }}</p>
         }
 
         @if (section() === 'employees') {
-          @if (editor(); as edit) {
+          @if (editingEmployee(); as edit) {
             <div class="record">
-              <noah-page-heading [title]="edit === 'create' ? '新增員工' : edit.displayName" [breadcrumbs]="breadcrumbs()" />
-              @if (edit !== 'create') {
-                <div class="page-heading-details"><p>{{ edit.employeeNumber }}</p></div>
-              }
+              <noah-page-heading [title]="edit.displayName" [breadcrumbs]="breadcrumbs()" />
+              <div class="page-heading-details"><p>{{ edit.employeeNumber }}</p></div>
               <section class="panel">
                 <form class="editor u-grid" [formGroup]="form" (ngSubmit)="save()">
                   <app-field>員工編號
                     <input noahInput formControlName="employeeNumber" maxlength="32" autocomplete="off" required>
-                    @if (edit !== 'create') {
-                      <span class="hint">建立後不能改。</span>
-                    }
+                    <span class="hint">建立後不能改。</span>
                   </app-field>
-                  @if (edit === 'create' || edit.managed) {
-                    <app-field>{{ edit === 'create' ? '身分證字號' : '新身分證字號' }}
-                      <input noahInput formControlName="nationalId" maxlength="10" autocomplete="off" spellcheck="false"
-                             [attr.required]="edit === 'create' ? '' : null">
+                  @if (edit.managed) {
+                    <app-field>新身分證字號
+                      <input noahInput formControlName="nationalId" maxlength="10" autocomplete="off" spellcheck="false">
                       @if (form.controls.nationalId.touched && form.controls.nationalId.hasError('pattern')) {
                         <span class="hint">請輸入 1 個英文字母和 9 個數字。</span>
-                      } @else if (edit !== 'create') {
+                      } @else {
                         <span class="hint">留空會沿用原本的登入帳號。</span>
                       }
                     </app-field>
                   }
                   <app-field>部門
-                    <select formControlName="departmentId" required>
-                      <option value="" disabled>選擇部門</option>
-                      @for (department of departments(); track department.departmentId) {
-                        <option [value]="department.departmentId">{{ department.name }}</option>
-                      }
-                    </select>
+                    <app-select-field formControlName="departmentId" emptyLabel="選擇部門" [options]="departmentSelectOptions()" />
                     @if (departments().length === 0) {
                       <span class="hint">請先到「組織」建立部門，再新增員工。</span>
                     }
                   </app-field>
                   <app-field>職稱
-                    <select formControlName="jobTitle" required>
-                      <option value="" disabled>選擇職稱</option>
-                      @for (title of jobTitleChoices(); track title) {
-                        <option [value]="title">{{ title }}</option>
-                      }
-                    </select>
+                    <app-select-field formControlName="jobTitle" emptyLabel="選擇職稱" [options]="jobTitleSelectOptions()" />
                   </app-field>
                   <app-field>到職日
                     <app-date-field formControlName="hiredOn"></app-date-field>
@@ -94,30 +79,16 @@
                     <app-date-field formControlName="bornOn"></app-date-field>
                   </app-field>
                   <app-field>雇用型態
-                    <select formControlName="employmentType" required>
-                      <option value="" disabled>選擇雇用型態</option>
-                      @for (type of employmentTypes; track type.value) {
-                        <option [value]="type.value">{{ type.label }}</option>
-                      }
-                    </select>
+                    <app-select-field formControlName="employmentType" emptyLabel="選擇雇用型態" [options]="employmentTypes" />
                   </app-field>
                   <app-field>權限
-                    <select formControlName="role" required>
-                      @for (role of roles; track role.value) {
-                        <option [value]="role.value">{{ role.label }}</option>
-                      }
-                    </select>
-                    @if (edit !== 'create' && edit.self) {
+                    <app-select-field formControlName="role" [options]="roles" />
+                    @if (edit.self) {
                       <span class="hint">這是你的帳號。可以改資料和權限，不能停用自己。至少要留一位人資。</span>
                     }
                   </app-field>
                   <app-field>直屬主管
-                    <select formControlName="managerEmployeeNumber">
-                      <option value="">無</option>
-                      @for (person of managerOptions(); track person.employeeNumber) {
-                        <option [value]="person.employeeNumber">{{ person.displayName }}（{{ person.employeeNumber }}）{{ person.status === 'inactive' ? '，已停用' : '' }}</option>
-                      }
-                    </select>
+                    <app-select-field formControlName="managerEmployeeNumber" [options]="managerSelectOptions()" />
                   </app-field>
                   <app-field>姓氏
                     <input noahInput formControlName="lastName" maxlength="48" required>
@@ -132,12 +103,6 @@
                   <app-field>電子郵件
                     <input noahInput formControlName="email" type="email" maxlength="254" required>
                   </app-field>
-                  @if (edit === 'create') {
-                    <app-field>初始密碼
-                      <input noahInput formControlName="initialPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
-                      <span class="hint">至少 12 個字元，員工首次登入時需更改。</span>
-                    </app-field>
-                  }
                   @if (form.controls.employeeNumber.touched && form.controls.employeeNumber.hasError('pattern')) {
                     <p class="hint">員工編號以英文字母或數字開頭，可用連字號和底線。</p>
                   }
@@ -236,7 +201,7 @@
                     @for (report of reports(); track report.employeeNumber) {
                       <tr>
                         <td>{{ report.employeeNumber }}</td>
-                        <td><button type="button" class="person-link" (click)="openPerson(report)">{{ report.displayName }}</button></td>
+                        <td><a class="person-link" [routerLink]="personRoute(report)">{{ report.displayName }}</a></td>
                         <td>{{ report.jobTitle || '—' }}</td>
                         <td>{{ report.status === 'inactive' ? '已停用' : '在職' }}</td>
                       </tr>
@@ -276,24 +241,11 @@
           <p class="empty">這筆員工資料不在目前的名單裡。</p>
           } @else {
             <noah-page-heading title="員工名冊" [breadcrumbs]="breadcrumbs()" />
-            <div class="page-heading-details">
-                @if (rosterSummary()) { <p>{{ rosterSummary() }}</p> }
-            </div>
-            <form class="roster-bar" (ngSubmit)="search()">
-              <select class="bar-control" [formControl]="departmentFilter" aria-label="部門">
-                <option value="">全部部門</option>
-                @for (department of departments(); track department.departmentId) {
-                  <option [value]="department.departmentId">{{ department.name }}</option>
-                }
-              </select>
-              <select class="bar-control" [formControl]="titleFilter" aria-label="職稱">
-                <option value="">全部職稱</option>
-                @for (title of titleFilterChoices(); track title) {
-                  <option [value]="title">{{ title }}</option>
-                }
-              </select>
+            <form class="roster-bar roster-bar--search" (ngSubmit)="search()">
+              <app-select-field class="bar-control" [formControl]="departmentFilter" emptyLabel="全部部門" [options]="departmentSelectOptions()" />
+              <app-select-field class="bar-control" [formControl]="titleFilter" emptyLabel="全部職稱" [options]="filteredTitleSelectOptions()" />
               <input noahInput class="bar-control roster-bar__search" [formControl]="query" type="search" maxlength="100" placeholder="姓名或編號" aria-label="搜尋">
-              <noah-button type="button" message="新增員工" (click)="openEditor()" [disabled]="saving()"></noah-button>
+              <noah-button type="button" variant="primary" message="新增員工" (click)="openEditor()" [disabled]="saving()"></noah-button>
             </form>
             @if (listError()) {
               <p class="error" role="alert">{{ listError() }}</p>
@@ -319,7 +271,7 @@
                       <tr>
                         <td>{{ account.employeeNumber }}</td>
                         <td>
-                          <button type="button" class="person-link" (click)="openPerson(account)">{{ personName(account) }}</button>
+                          <a class="person-link" [routerLink]="personRoute(account)">{{ personName(account) }}</a>
                           @if (displayNote(account); as note) {
                             <span class="person-note">（{{ note }}）</span>
                           }
@@ -343,11 +295,86 @@
               </div>
             }
           }
+          @if (editor() === 'create') {
+            <div class="employee-scrim" (click)="closeEditor()">
+              <section class="employee-dialog" role="dialog" aria-modal="true" aria-labelledby="employee-dialog-title" (click)="$event.stopPropagation()">
+                <header class="employee-dialog__head">
+                  <div>
+                    <p class="employee-dialog__eyebrow">人資管理</p>
+                    <h2 id="employee-dialog-title">新增員工</h2>
+                  </div>
+                  <button class="employee-dialog__close" type="button" aria-label="關閉" (click)="closeEditor()" [disabled]="saving()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+                  </button>
+                </header>
+                @if (error()) { <p class="employee-dialog__error" role="alert">{{ error() }}</p> }
+                <form class="employee-dialog__form" [formGroup]="form" (ngSubmit)="save()">
+                  <div class="employee-dialog__body editor u-grid">
+                    <app-field>員工編號
+                      <input noahInput formControlName="employeeNumber" maxlength="32" autocomplete="off" required>
+                    </app-field>
+                    <app-field>身分證字號
+                      <input noahInput formControlName="nationalId" maxlength="10" autocomplete="off" spellcheck="false" required>
+                      @if (form.controls.nationalId.touched && form.controls.nationalId.hasError('pattern')) {
+                        <span class="hint">請輸入 1 個英文字母和 9 個數字。</span>
+                      }
+                    </app-field>
+                    <app-field>部門
+                      <app-select-field formControlName="departmentId" emptyLabel="選擇部門" [options]="departmentSelectOptions()" />
+                      @if (departments().length === 0) {
+                        <span class="hint">請先到「組織」建立部門，再新增員工。</span>
+                      }
+                    </app-field>
+                    <app-field>職稱
+                      <app-select-field formControlName="jobTitle" emptyLabel="選擇職稱" [options]="jobTitleSelectOptions()" />
+                    </app-field>
+                    <app-field>到職日
+                      <app-date-field formControlName="hiredOn"></app-date-field>
+                      @if (form.controls.hiredOn.value) { <span class="hint">年資 {{ tenureLabel(form.controls.hiredOn.value) }}</span> }
+                    </app-field>
+                    <app-field>生日
+                      <app-date-field formControlName="bornOn"></app-date-field>
+                    </app-field>
+                    <app-field>雇用型態
+                      <app-select-field formControlName="employmentType" emptyLabel="選擇雇用型態" [options]="employmentTypes" />
+                    </app-field>
+                    <app-field>權限
+                      <app-select-field formControlName="role" [options]="roles" />
+                    </app-field>
+                    <app-field>直屬主管
+                      <app-select-field formControlName="managerEmployeeNumber" [options]="managerSelectOptions()" />
+                    </app-field>
+                    <app-field>姓氏
+                      <input noahInput formControlName="lastName" maxlength="48" required>
+                    </app-field>
+                    <app-field>名字
+                      <input noahInput formControlName="firstName" maxlength="48" required>
+                    </app-field>
+                    <app-field>顯示名稱
+                      <input noahInput formControlName="displayName" maxlength="100" required>
+                      <span class="hint">用在名單、表頭和主管選單，不會跟著姓名改。</span>
+                    </app-field>
+                    <app-field>電子郵件
+                      <input noahInput formControlName="email" type="email" maxlength="254" required>
+                    </app-field>
+                    <app-field>初始密碼
+                      <input noahInput formControlName="initialPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+                      <span class="hint">至少 12 個字元，員工首次登入時需更改。</span>
+                    </app-field>
+                    @if (form.controls.employeeNumber.touched && form.controls.employeeNumber.hasError('pattern')) {
+                      <p class="hint">員工編號以英文字母或數字開頭，可用連字號和底線。</p>
+                    }
+                  </div>
+                  <footer class="employee-dialog__actions">
+                    <noah-button type="button" variant="secondary" message="取消" (click)="closeEditor()" [disabled]="saving()"></noah-button>
+                    <noah-button type="submit" variant="primary" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="form.invalid || saving()"></noah-button>
+                  </footer>
+                </form>
+              </section>
+            </div>
+          }
         } @else if (section() === 'organization') {
           <noah-page-heading title="組織架構" [breadcrumbs]="breadcrumbs()" />
-          <div class="page-heading-details">
-              @if (departments().length) { <p>{{ departments().length }} 個部門</p> }
-          </div>
           <div class="roster-bar">
             <noah-button type="button" message="新增部門" (click)="openDepartmentEditor()" [disabled]="saving()"></noah-button>
           </div>
@@ -359,20 +386,10 @@
                   <input noahInput formControlName="name" maxlength="100" required>
                 </app-field>
                 <app-field>上層部門
-                  <select formControlName="parentDepartmentId">
-                    <option value="">無</option>
-                    @for (department of parentOptions(); track department.departmentId) {
-                      <option [value]="department.departmentId">{{ department.name }}</option>
-                    }
-                  </select>
+                  <app-select-field formControlName="parentDepartmentId" [options]="parentDepartmentSelectOptions()" />
                 </app-field>
                 <app-field>部門主管
-                  <select formControlName="headEmployeeNumber">
-                    <option value="">不指定</option>
-                    @for (person of people(); track person.employeeNumber) {
-                      <option [value]="person.employeeNumber">{{ person.displayName }}（{{ person.employeeNumber }}）{{ person.status === 'inactive' ? '，已停用' : '' }}</option>
-                    }
-                  </select>
+                  <app-select-field formControlName="headEmployeeNumber" [options]="departmentHeadSelectOptions()" />
                 </app-field>
                 <div class="actions u-flex">
                   <noah-button type="submit" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="departmentForm.invalid || saving()"></noah-button>

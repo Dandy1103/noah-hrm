@@ -1,14 +1,16 @@
 import { NoahBreadcrumb, NoahButtonComponent, NoahInputDirective, NoahPageHeadingComponent } from '@dandy1103/ui';
+import type { NoahSelectOption } from '@dandy1103/ui';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { Observable, catchError, debounceTime, filter, finalize, forkJoin, of } from 'rxjs';
 import { DutyBoardComponent } from './features/duty/duty-board.component';
 import type { DutyKind } from './features/duty/duty-board.component';
 import { signedIn } from './require-session';
 import { DateFieldComponent } from './shared/date-field/date-field.component';
 import { FieldComponent } from './shared/field/field.component';
+import { SelectFieldComponent } from './shared/select-field/select-field.component';
 import { TableComponent } from './shared/table/table.component';
 
 interface EmployeeAccount {
@@ -97,7 +99,7 @@ interface HrmScreen {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [NoahInputDirective, NoahPageHeadingComponent, NoahButtonComponent, RouterOutlet, ReactiveFormsModule, DutyBoardComponent, DateFieldComponent, FieldComponent, TableComponent],
+  imports: [NoahInputDirective, NoahPageHeadingComponent, NoahButtonComponent, RouterOutlet, RouterLink, ReactiveFormsModule, DutyBoardComponent, DateFieldComponent, FieldComponent, SelectFieldComponent, TableComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
@@ -173,13 +175,6 @@ export class AppComponent {
   readonly hasMore = signal(false);
   private appliedQuery = '';
   private filteredAccounts: EmployeeAccount[] | null = null;
-  readonly rosterSummary = computed(() => {
-    const people = this.people();
-    if (people.length === 0) return '';
-    const inactive = people.filter((person) => person.status === 'inactive').length;
-    if (inactive === 0) return `${people.length} 人`;
-    return `${people.length} 人，${inactive} 人已停用`;
-  });
   readonly organizationRows = computed(() => this.buildOrganizationRows());
   readonly trail = computed((): CrumbStep[] => {
     const section = this.section();
@@ -293,6 +288,45 @@ export class AppComponent {
     const selected = this.titleFilter.value.trim();
     if (selected) titles.add(selected);
     return [...titles];
+  }
+
+  departmentSelectOptions(): NoahSelectOption[] {
+    return this.departments().map((department) => ({ value: String(department.departmentId), label: department.name }));
+  }
+
+  jobTitleSelectOptions(): NoahSelectOption[] {
+    return this.jobTitleChoices().map((title) => ({ value: title, label: title }));
+  }
+
+  filteredTitleSelectOptions(): NoahSelectOption[] {
+    return this.titleFilterChoices().map((title) => ({ value: title, label: title }));
+  }
+
+  managerSelectOptions(): NoahSelectOption[] {
+    return [
+      { value: '', label: '無' },
+      ...this.managerOptions().map((person) => ({
+        value: person.employeeNumber,
+        label: `${person.displayName}（${person.employeeNumber}）${person.status === 'inactive' ? '，已停用' : ''}`,
+      })),
+    ];
+  }
+
+  parentDepartmentSelectOptions(): NoahSelectOption[] {
+    return [
+      { value: '', label: '無' },
+      ...this.parentOptions().map((department) => ({ value: String(department.departmentId), label: department.name })),
+    ];
+  }
+
+  departmentHeadSelectOptions(): NoahSelectOption[] {
+    return [
+      { value: '', label: '不指定' },
+      ...this.people().map((person) => ({
+        value: person.employeeNumber,
+        label: `${person.displayName}（${person.employeeNumber}）${person.status === 'inactive' ? '，已停用' : ''}`,
+      })),
+    ];
   }
 
   loadAccounts(offset = 0) {
@@ -649,8 +683,8 @@ export class AppComponent {
     });
   }
 
-  openPerson(account: EmployeeAccount) {
-    this.router.navigate([HRM_ROOT, 'employees', account.employeeNumber]);
+  personRoute(account: EmployeeAccount): string[] {
+    return [HRM_ROOT, 'employees', account.employeeNumber];
   }
 
   closePerson() {
@@ -849,6 +883,11 @@ export class AppComponent {
     else this.router.navigate([HRM_ROOT, 'employees', 'new']);
   }
 
+  editingEmployee(): EmployeeAccount | null {
+    const editor = this.editor();
+    return editor && editor !== 'create' ? editor : null;
+  }
+
   private presentEmployeeEditor(account?: EmployeeAccount) {
     this.error.set('');
     this.message.set('');
@@ -880,6 +919,7 @@ export class AppComponent {
   }
 
   closeEditor() {
+    if (this.saving()) return;
     const editing = this.editor();
     if (editing && editing !== 'create') {
       this.router.navigate([HRM_ROOT, 'employees', editing.employeeNumber]);
