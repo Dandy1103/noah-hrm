@@ -2,21 +2,14 @@
 
 ## 本機開發
 
-本機登入跟 Portal／線上同一套 Cloud-IAM。完整步驟看 Portal 的 [本機登入說明](https://github.com/Dandy1103/noah-portal/blob/develop/docs/DEPLOYMENT.md#本機登入跟線上同一套-cloud-iam)（本機檔案在 `noah-portal/docs/DEPLOYMENT.md`）。
-
-```cmd
-copy .env.local.example .env.local
-```
-
-填 `OIDC_CLIENT_SECRET`（Cloud-IAM → Clients → `noah-hrm` → Credentials）和 `DATABASE_URL`。Cloud-IAM 要允許 `http://localhost:4201/auth/callback`。
+本機開發沿用 noah-apps 的 federated 啟動方式：`npm start` 會啟動或沿用旁邊的 Shell、編譯 HRM remote，並開啟 `/hrm`。登入與 API 經 noah-apps 相同的 proxy 轉送到 develop Core。完整登入步驟看 Portal 的 [本機登入說明](https://github.com/Dandy1103/noah-portal/blob/develop/docs/DEPLOYMENT.md#本機登入跟線上同一套-cloud-iam)（本機檔案在 `noah-portal/docs/DEPLOYMENT.md`）。
 
 ```cmd
 npm start
 ```
 
-開 [HRM](http://localhost:4201/)。HRM 本機啟動只跑 Angular，登入和 API 預設經 `https://noah-platform.dandy-cheng.com` 轉送到 develop Core，不需要啟動本機 Core 或在 HRM 專案安裝 JDK。可用 `CORE_URL` 覆寫 Core 位址。換前端 port：`$env:HRM_PORT = "4202"`，並在 Cloud-IAM 的 `noah-core` client 補 `http://localhost:4202/login/oauth2/code/noah`。
+瀏覽器會開啟 Shell 的 [HRM 路由](http://localhost:4200/hrm)。和 noah-apps 一樣，這個流程會同時啟動 Shell（若尚未啟動）與 HRM remote，不需要在 HRM 專案安裝 JDK。
 
-沒有 `.env.local` 時才會退回本機 Keycloak（8081）備援。
 
 ## 資料庫遷移
 
@@ -28,7 +21,7 @@ HRM 的資料庫遷移由 `noah-core` 啟動時執行。HRM 前端不再啟動�
 
 ## 共用測試環境
 
-如果團隊有共用 Keycloak 和 PostgreSQL，把 .env.local.example 複製成 .env.local，再填入該環境的設定。HRM 用自己的機密 OIDC client，啟用 Standard Flow 和 PKCE S256，允許 http://localhost:4201/auth/callback，換 port 時一併換回呼。帳號管理 client 需啟用服務帳號並授予 realm-management 的 manage-users。HRM_ADMIN_SUBJECT 填有員工管理權限的 Keycloak 使用者 ID。Portal 與 HRM 若使用同一個 realm，可沿用瀏覽器的 Keycloak 登入狀態。
+HRM 前端不直接連 Keycloak 或資料庫。登入與 API 由 `noah-core` 提供，本機透過和 noah-apps 相同的 proxy 轉送到 develop Core；HRM 不需要 `.env.local`、本機 Keycloak 或資料庫設定。HRM 的後端環境與帳號管理設定請在 `noah-core` 維護。
 
 ## HRM 上線步驟
 
