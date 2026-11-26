@@ -14,17 +14,17 @@ copy .env.local.example .env.local
 npm start
 ```
 
-開 [HRM](http://localhost:4201/)。登入走本機 `noah-core`（`127.0.0.1:8080`）和 Cloud-IAM，不是本機 8081。先啟動 core。換前端 port：`$env:HRM_PORT = "4202"`，並在 Cloud-IAM 的 `noah-core` client 補 `http://localhost:4202/login/oauth2/code/noah`。後端 port 可用 `HRM_BACKEND_PORT`。
+開 [HRM](http://localhost:4201/)。HRM 本機啟動只跑 Angular，登入和 API 預設經 `https://noah-platform.dandy-cheng.com` 轉送到 develop Core，不需要啟動本機 Core 或在 HRM 專案安裝 JDK。可用 `CORE_URL` 覆寫 Core 位址。換前端 port：`$env:HRM_PORT = "4202"`，並在 Cloud-IAM 的 `noah-core` client 補 `http://localhost:4202/login/oauth2/code/noah`。
 
 沒有 `.env.local` 時才會退回本機 Keycloak（8081）備援。
 
 ## 資料庫遷移
 
-HRM 啟動時會對設定的 PostgreSQL 執行 Flyway 遷移。如果只想更新結構，或要在全新的資料庫先啟動 Portal，在 `noah-hrm` 執行 `npm run db:migrate`。這個指令不會啟動 HRM 網站。
+HRM 的資料庫遷移由 `noah-core` 啟動時執行。HRM 前端不再啟動獨立 Java 後端，也不提供資料庫遷移指令。
 
-變更員工或部門資料表時，在 [資料庫遷移目錄](backend/src/main/resources/db/migration) 新增下一個版本的 SQL，例如 `V2__add_employee_extension.sql`，和功能一起提交。已套用的遷移檔保留原樣，後續修正另開新版本。Git 管理遷移 SQL 和可重建的測試資料，員工資料、資料庫備份及憑證留在各自的環境。
+變更員工或部門資料表時，在 `noah-core/src/main/resources/db/hrm` 的資料庫遷移目錄新增下一個版本 SQL，和 Core 功能一起提交。已套用的遷移檔保留原樣，後續修正另開新版本。Git 管理遷移 SQL 和可重建的測試資料，員工資料、資料庫備份及憑證留在各自的環境。
 
-Railway 可在 **HRM → Settings → Deploy → Pre-deploy Command** 填入 `java -jar noah-hrm.jar migrate`。如果同一版也改到 Portal 的資料查詢，先部署 HRM 並確認遷移成功，再部署 Portal。 [Railway 部署前指令](https://docs.railway.com/deployments/pre-deploy-command)
+新增 HRM 資料庫遷移時，部署包含該 migration 的 `noah-core`；Core 啟動時會套用遷移。
 
 ## 共用測試環境
 
