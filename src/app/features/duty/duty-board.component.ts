@@ -5,9 +5,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { NoahButtonComponent, NoahInputDirective } from '@dandy1103/ui';
+import { NoahButtonComponent, NoahInputDirective, NoahDatePickerComponent } from '@dandy1103/ui';
 import type { NoahSelectOption } from '@dandy1103/ui';
-import { DateFieldComponent } from '../../shared/date-field/date-field.component';
 import { FieldComponent } from '../../shared/field/field.component';
 import { SelectFieldComponent } from '../../shared/select-field/select-field.component';
 import { TableComponent } from '../../shared/table/table.component';
@@ -42,7 +41,7 @@ interface DutyRecord {
 @Component({
   selector: 'app-duty-board',
   standalone: true,
-  imports: [ReactiveFormsModule, NoahButtonComponent, NoahInputDirective, DateFieldComponent, FieldComponent, SelectFieldComponent, TableComponent],
+  imports: [ReactiveFormsModule, NoahButtonComponent, NoahInputDirective, NoahDatePickerComponent, FieldComponent, SelectFieldComponent, TableComponent],
   templateUrl: './duty-board.component.html',
   styleUrl: './duty-board.component.scss',
 })

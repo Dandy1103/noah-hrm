@@ -3,10 +3,12 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "node ../noah-apps/scripts/dev.mjs hrm 4301",
+    "start": "node ../noah-apps/scripts/dev.mjs hrm 4301 --ui-local",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "start:ui-local": "node ../noah-apps/scripts/dev.mjs hrm 4301 --ui-local",
+    "start:package": "node ../noah-apps/scripts/dev.mjs hrm 4301"
   },
   "private": true,
   "dependencies": {
@@ -20,7 +22,7 @@
     "@angular/platform-browser-dynamic": "^17.3.0",
     "@angular/router": "^17.3.0",
     "@dandy1103/common": "^0.1.0",
-    "@dandy1103/ui": "0.1.18",
+    "@dandy1103/ui": "^0.1.19",
     "es-module-shims": "^1.5.12",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

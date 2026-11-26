@@ -1,26 +1,24 @@
 const { withNativeFederation, shareAll } = require('@angular-architects/native-federation/config');
 
+const localUi = process.env.NOAH_UI_LOCAL === '1';
+const shared = shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' });
+const skip = [
+  'rxjs/ajax',
+  'rxjs/fetch',
+  'rxjs/testing',
+  'rxjs/webSocket',
+];
+
+if (localUi) {
+  delete shared['@dandy1103/ui'];
+  skip.push('@dandy1103/ui');
+}
+
 module.exports = withNativeFederation({
-
   name: 'noah-hrm',
-
   exposes: {
     './routes': './src/app/remote.routes.ts',
   },
-
-  shared: {
-    ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
-  },
-
-  skip: [
-    'rxjs/ajax',
-    'rxjs/fetch',
-    'rxjs/testing',
-    'rxjs/webSocket',
-    // Add further packages you don't need at runtime
-  ]
-
-  // Please read our FAQ about sharing libs:
-  // https://shorturl.at/jmzH0
-  
+  shared,
+  skip,
 });

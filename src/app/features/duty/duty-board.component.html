@@ -20,7 +20,7 @@
       @switch (kind) {
         @case ('attendance') {
           <app-field>日期
-            <app-date-field formControlName="workDate"></app-date-field>
+            <noah-date-picker formControlName="workDate"></noah-date-picker>
             <span class="hint">同一天一位員工只記一筆。</span>
           </app-field>
           <app-field>上班
@@ -38,10 +38,10 @@
             <app-select-field formControlName="leaveType" [options]="leaveTypes" />
           </app-field>
           <app-field>開始
-            <app-date-field formControlName="startsOn"></app-date-field>
+            <noah-date-picker formControlName="startsOn"></noah-date-picker>
           </app-field>
           <app-field>結束
-            <app-date-field formControlName="endsOn"></app-date-field>
+            <noah-date-picker formControlName="endsOn"></noah-date-picker>
           </app-field>
           <app-field>備註
             <input noahInput formControlName="note" maxlength="200" autocomplete="off">
@@ -49,7 +49,7 @@
         }
         @case ('overtime') {
           <app-field>日期
-            <app-date-field formControlName="workDate"></app-date-field>
+            <noah-date-picker formControlName="workDate"></noah-date-picker>
           </app-field>
           <app-field>開始
             <input noahInput formControlName="startsAt" type="time" step="60" required>
@@ -66,10 +66,10 @@
             <input noahInput formControlName="place" maxlength="100" autocomplete="off" required>
           </app-field>
           <app-field>開始
-            <app-date-field formControlName="startsOn"></app-date-field>
+            <noah-date-picker formControlName="startsOn"></noah-date-picker>
           </app-field>
           <app-field>結束
-            <app-date-field formControlName="endsOn"></app-date-field>
+            <noah-date-picker formControlName="endsOn"></noah-date-picker>
           </app-field>
           <app-field>事由
             <input noahInput formControlName="reason" maxlength="200" autocomplete="off" required>

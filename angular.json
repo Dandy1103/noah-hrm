@@ -35,6 +35,14 @@
 						"rebuildDelay": 0,
 						"dev": true,
 						"port": 0
+					},
+					"configurations": {
+						"ui-local": {
+							"target": "noah-hrm:serve-original:ui-local",
+							"rebuildDelay": 0,
+							"dev": true,
+							"port": 0
+						}
 					}
 				},
 				"extract-i18n": {
@@ -107,6 +115,15 @@
 							"optimization": false,
 							"extractLicenses": false,
 							"sourceMap": true
+						},
+						"ui-local": {
+							"optimization": false,
+							"extractLicenses": false,
+							"sourceMap": true,
+							"tsConfig": "tsconfig.ui-local.json",
+							"styles": [
+								"src/styles.ui-local.scss"
+							]
 						}
 					},
 					"defaultConfiguration": "production"
@@ -127,6 +144,9 @@
 						"portal": {
 							"buildTarget": "noah-hrm:build:development,portal",
 							"servePath": "/hrm/"
+						},
+						"ui-local": {
+							"buildTarget": "noah-hrm:esbuild:ui-local"
 						}
 					},
 					"defaultConfiguration": "development"
