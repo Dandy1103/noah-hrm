@@ -1,4 +1,4 @@
-import { NoahBreadcrumb, NoahButtonComponent, NoahInputDirective, NoahPageHeadingComponent } from '@dandy1103/ui';
+import { NoahBreadcrumb, NoahButtonComponent, NoahDialogComponent, NoahInputDirective, NoahPageHeadingComponent, NoahDatePickerComponent } from '@dandy1103/ui';
 import type { NoahSelectOption } from '@dandy1103/ui';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
@@ -8,7 +8,6 @@ import { Observable, catchError, debounceTime, filter, finalize, forkJoin, of } 
 import { DutyBoardComponent } from './features/duty/duty-board.component';
 import type { DutyKind } from './features/duty/duty-board.component';
 import { signedIn } from './require-session';
-import { DateFieldComponent } from './shared/date-field/date-field.component';
 import { FieldComponent } from './shared/field/field.component';
 import { SelectFieldComponent } from './shared/select-field/select-field.component';
 import { TableComponent } from './shared/table/table.component';
@@ -29,6 +28,8 @@ interface EmployeeAccount {
   managerName: string | null;
   role: 'admin' | 'manager' | 'employee';
   status: 'active' | 'inactive';
+  identitySyncStatus?: 'pending' | 'synced' | 'failed' | 'unlinked' | 'disabled';
+  identitySyncError?: string | null;
   managed: boolean;
   editable: boolean;
   self: boolean;
@@ -99,7 +100,7 @@ interface HrmScreen {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [NoahInputDirective, NoahPageHeadingComponent, NoahButtonComponent, RouterOutlet, RouterLink, ReactiveFormsModule, DutyBoardComponent, DateFieldComponent, FieldComponent, SelectFieldComponent, TableComponent],
+  imports: [NoahInputDirective, NoahPageHeadingComponent, NoahButtonComponent, NoahDialogComponent, RouterOutlet, RouterLink, ReactiveFormsModule, DutyBoardComponent, NoahDatePickerComponent, FieldComponent, SelectFieldComponent, TableComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
@@ -129,7 +130,10 @@ export class AppComponent {
     next: this.signInError || this.signedOut ? this.loginParams.get('next') ?? '/' : location.pathname + location.search,
   });
   readonly access = signal<'loading' | 'allowed' | 'signed-out' | 'denied' | 'unavailable'>('loading');
+  readonly canManage = signal(false);
   readonly displayName = signal('');
+  readonly nextEmployeeNumber = signal('');
+  readonly nextEmployeeNumberError = signal(false);
   readonly accessError = signal('請稍後重新整理。');
   readonly section = signal(this.sectionFromLocation());
   readonly dutyEditing = signal(false);
@@ -163,6 +167,7 @@ export class AppComponent {
   readonly error = signal('');
   readonly editor = signal<'create' | EmployeeAccount | null>(null);
   readonly disableTarget = signal<EmployeeAccount | null>(null);
+  readonly restoreTarget = signal<EmployeeAccount | null>(null);
   readonly departmentEditor = signal<'create' | Department | null>(null);
   readonly deleteDepartmentTarget = signal<Department | null>(null);
   readonly query = this.formBuilder.control('', [Validators.maxLength(100)]);
@@ -216,10 +221,8 @@ export class AppComponent {
 
   readonly form = this.formBuilder.group({
     nationalId: ['', Validators.pattern(/^[a-z][12][0-9]{8}$/i)],
-    employeeNumber: ['', [Validators.required, Validators.pattern(/^[a-z0-9][a-z0-9_-]{0,31}$/i)]],
-    displayName: ['', [Validators.required, Validators.maxLength(100)]],
-    lastName: ['', [Validators.required, Validators.maxLength(48)]],
-    firstName: ['', [Validators.required, Validators.maxLength(48)]],
+    employeeNumber: ['', [Validators.pattern(/^[a-z0-9][a-z0-9_-]{0,31}$/i)]],
+    name: ['', [Validators.required, Validators.maxLength(100)]],
     departmentId: ['', Validators.required],
     jobTitle: ['', [Validators.required, Validators.maxLength(100)]],
     hiredOn: ['', Validators.required],
@@ -228,12 +231,15 @@ export class AppComponent {
     managerEmployeeNumber: ['', Validators.pattern(/^$|^[a-z0-9][a-z0-9_-]{0,31}$/i)],
     role: ['employee', Validators.required],
     email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
-    initialPassword: ['', [Validators.required, Validators.minLength(12), Validators.maxLength(128)]],
   });
   readonly departmentForm = this.formBuilder.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     parentDepartmentId: [''],
     headEmployeeNumber: [''],
+  });
+  readonly restoreForm = this.formBuilder.group({
+    nationalId: ['', [Validators.required, Validators.pattern(/^[a-z][12][0-9]{8}$/i)]],
+    initialPassword: ['', [Validators.required, Validators.minLength(12), Validators.maxLength(128)]],
   });
 
   constructor() {
@@ -247,13 +253,17 @@ export class AppComponent {
       this.appliedQuery = this.query.value.trim();
       this.loadAccounts(0);
     });
-    this.http.get('/api/hrm/access').subscribe({
-      next: () => {
+    this.http.get<{ canManage: boolean }>('/api/hrm/access').subscribe({
+      next: (capabilities) => {
+        this.canManage.set(capabilities.canManage);
         this.access.set('allowed');
+        this.followRoute();
         this.loadDisplayName();
         this.loadAccounts(this.pageOffset());
-        this.loadDepartments();
-        this.loadPeople();
+        if (capabilities.canManage) {
+          this.loadDepartments();
+          this.loadPeople();
+        }
       },
       error: (error: HttpErrorResponse) => {
         if (error.status === 401) {
@@ -518,6 +528,10 @@ export class AppComponent {
   }
 
   private showScreen(screen: HrmScreen) {
+    if (this.access() === 'allowed' && !this.canManage() && (screen.section !== 'employees' || screen.view !== 'list')) {
+      this.router.navigate([HRM_ROOT, 'employees']);
+      return;
+    }
     const duty = screen.section === 'attendance' || screen.section === 'leave' || screen.section === 'overtime' || screen.section === 'trip';
     this.dutyView.set(duty && (screen.view === 'new' || screen.view === 'edit') ? screen.view : 'list');
     this.dutyRecordId.set(duty && screen.view === 'edit' ? screen.id : null);
@@ -894,9 +908,7 @@ export class AppComponent {
     this.disableTarget.set(null);
     this.form.reset(account ? {
       employeeNumber: account.employeeNumber,
-      displayName: account.displayName,
-      firstName: account.firstName ?? '',
-      lastName: account.lastName ?? '',
+      name: this.personName(account),
       departmentId: account.departmentId == null ? '' : String(account.departmentId),
       jobTitle: account.jobTitle ?? '',
       hiredOn: account.hiredOn ?? '',
@@ -906,16 +918,24 @@ export class AppComponent {
       role: account.role ?? 'employee',
       email: account.email ?? '',
     } : { role: 'employee' });
-    for (const control of [this.form.controls.employeeNumber, this.form.controls.initialPassword]) {
-      if (account) control.disable();
-      else control.enable();
-    }
+    if (account) this.form.controls.employeeNumber.disable();
+    else this.form.controls.employeeNumber.enable();
     const nationalId = this.form.controls.nationalId;
     if (account) nationalId.removeValidators(Validators.required);
     else nationalId.addValidators(Validators.required);
     nationalId.updateValueAndValidity();
     if (account) this.selectedNumber.set(account.employeeNumber);
+    else this.loadNextEmployeeNumber();
     this.editor.set(account ?? 'create');
+  }
+
+  private loadNextEmployeeNumber() {
+    this.nextEmployeeNumber.set('');
+    this.nextEmployeeNumberError.set(false);
+    this.http.get<{ employeeNumber: string }>(this.accountsUrl + '/next-number').subscribe({
+      next: ({ employeeNumber }) => this.nextEmployeeNumber.set(employeeNumber),
+      error: () => this.nextEmployeeNumberError.set(true),
+    });
   }
 
   closeEditor() {
@@ -987,9 +1007,9 @@ export class AppComponent {
     if (!editor || this.form.invalid || this.saving()) return;
     const raw = this.form.getRawValue();
     const profile = {
-      displayName: raw.displayName,
-      firstName: raw.firstName,
-      lastName: raw.lastName,
+      displayName: raw.name?.trim(),
+      firstName: null,
+      lastName: null,
       departmentId: Number(raw.departmentId),
       jobTitle: raw.jobTitle,
       hiredOn: raw.hiredOn,
@@ -997,13 +1017,14 @@ export class AppComponent {
       employmentType: raw.employmentType,
       email: raw.email,
       managerEmployeeNumber: raw.managerEmployeeNumber.trim() || null,
-      role: raw.role,
     };
-    const { employeeNumber, nationalId, initialPassword } = raw;
+    const { nationalId } = raw;
     if (editor === 'create') {
-      this.mutate(this.http.post(this.accountsUrl, { ...profile, employeeNumber, nationalId, initialPassword }), '已新增員工。', true, {}, true);
+      this.mutate(this.http.post(this.accountsUrl, { ...profile, employeeNumber: this.nextEmployeeNumber(), nationalId }), '員工資料已新增；登入帳號正在背景建立。', true, {
+        409: '員工編號已更新，請關閉後重新開啟新增員工表單。',
+      }, true);
     } else {
-      this.mutate(this.http.patch(this.accountUrl(editor), { ...profile, nationalId }), '已儲存員工資料。', false, {}, true);
+      this.mutate(this.http.patch(this.accountUrl(editor), { ...profile, role: raw.role, nationalId }), '員工資料已儲存；登入帳號正在背景同步。', false, {}, true);
     }
   }
 
@@ -1016,11 +1037,39 @@ export class AppComponent {
   disable() {
     const account = this.disableTarget();
     if (!account) return;
-    this.mutate(this.http.delete(this.accountUrl(account)), '已停用。');
+    this.mutate(this.http.delete(this.accountUrl(account)), '員工已停用；登入帳號正在停用。');
   }
 
   restore(account: EmployeeAccount) {
-    this.mutate(this.http.post(this.accountUrl(account) + '/restore', null), '已恢復。');
+    this.error.set('');
+    this.message.set('');
+    this.restoreForm.reset();
+    this.restoreTarget.set(account);
+  }
+
+  confirmRestore() {
+    const account = this.restoreTarget();
+    if (!account || this.restoreForm.invalid) return;
+    const { nationalId, initialPassword } = this.restoreForm.getRawValue();
+    this.mutate(this.http.post(this.accountUrl(account) + '/restore', { nationalId, initialPassword }),
+      '已送出恢復申請；登入帳號正在背景恢復。');
+  }
+
+  closeRestore() {
+    if (this.saving()) return;
+    this.restoreTarget.set(null);
+    this.restoreForm.reset();
+    this.error.set('');
+  }
+
+  syncStatus(account: EmployeeAccount): string {
+    switch (account.identitySyncStatus) {
+      case 'pending': return '登入身分處理中';
+      case 'failed': return '登入身分處理失敗，系統會自動重試';
+      case 'disabled': return '登入帳號已停用';
+      case 'unlinked': return account.status === 'inactive' ? '登入帳號已移除' : '尚未連結登入帳號';
+      default: return '登入身分已連結';
+    }
   }
 
   private buildOrganizationRows(): OrganizationRow[] {
@@ -1064,11 +1113,11 @@ export class AppComponent {
     return this.jobTitles;
   }
 
-  personName(account: Pick<EmployeeAccount, 'firstName' | 'lastName'>): string {
+  personName(account: Pick<EmployeeAccount, 'firstName' | 'lastName' | 'displayName'>): string {
     const last = account.lastName?.trim() ?? '';
     const first = account.firstName?.trim() ?? '';
     const combined = `${last}${first}`;
-    if (!combined) return '—';
+    if (!combined) return account.displayName?.trim() || '—';
     return /[\u4e00-\u9fff]/.test(combined) ? combined : `${first} ${last}`.trim();
   }
 
@@ -1101,6 +1150,8 @@ export class AppComponent {
         this.departmentForm.reset();
         this.departmentEditor.set(null);
         this.disableTarget.set(null);
+        this.restoreTarget.set(null);
+        this.restoreForm.reset();
         if (backToList) {
           this.personLoad += 1;
           this.selectedNumber.set(null);
@@ -1141,7 +1192,7 @@ export class AppComponent {
           403: '你沒有修改這個帳號的權限。',
           404: '找不到這個帳號，請重新整理清單。',
           409: '沒有存成。請確認員工編號、身分證字號或電子郵件沒有重複，而且還留著至少一位人資。',
-          503: '目前無法寫入，請確認 HRM 的資料庫與 Keycloak 管理設定。',
+          503: '目前無法排入帳號同步。請確認 Core 已設定 HRM_SYNC_ENCRYPTION_KEY 和 HRM Keycloak 管理憑證。',
           ...failures,
         };
         this.error.set(messages[error.status] ?? '更新失敗，請稍後再試。');

@@ -2,9 +2,7 @@
 
 @switch (access()) {
   @case ('loading') {
-    <div class="access-mask" role="progressbar" aria-label="正在確認權限">
-      <div class="access-mask__bar"></div>
-    </div>
+    <main class="gate access-loading" role="status">正在確認人資權限…</main>
   }
   @case ('signed-out') {
     <main class="gate">
@@ -62,21 +60,18 @@
                   }
                   <app-field>部門
                     <app-select-field formControlName="departmentId" emptyLabel="選擇部門" [options]="departmentSelectOptions()" />
-                    @if (departments().length === 0) {
-                      <span class="hint">請先到「組織」建立部門，再新增員工。</span>
-                    }
                   </app-field>
                   <app-field>職稱
                     <app-select-field formControlName="jobTitle" emptyLabel="選擇職稱" [options]="jobTitleSelectOptions()" />
                   </app-field>
                   <app-field>到職日
-                    <app-date-field formControlName="hiredOn"></app-date-field>
+                    <noah-date-picker formControlName="hiredOn"></noah-date-picker>
                     @if (form.controls.hiredOn.value) {
                       <span class="hint">年資 {{ tenureLabel(form.controls.hiredOn.value) }}</span>
                     }
                   </app-field>
                   <app-field>生日
-                    <app-date-field formControlName="bornOn"></app-date-field>
+                    <noah-date-picker formControlName="bornOn"></noah-date-picker>
                   </app-field>
                   <app-field>雇用型態
                     <app-select-field formControlName="employmentType" emptyLabel="選擇雇用型態" [options]="employmentTypes" />
@@ -90,15 +85,8 @@
                   <app-field>直屬主管
                     <app-select-field formControlName="managerEmployeeNumber" [options]="managerSelectOptions()" />
                   </app-field>
-                  <app-field>姓氏
-                    <input noahInput formControlName="lastName" maxlength="48" required>
-                  </app-field>
-                  <app-field>名字
-                    <input noahInput formControlName="firstName" maxlength="48" required>
-                  </app-field>
-                  <app-field>顯示名稱
-                    <input noahInput formControlName="displayName" maxlength="100" required>
-                    <span class="hint">用在名單、表頭和主管選單，不會跟著姓名改。</span>
+                  <app-field>姓名
+                    <input noahInput formControlName="name" maxlength="100" required>
                   </app-field>
                   <app-field>電子郵件
                     <input noahInput formControlName="email" type="email" maxlength="254" required>
@@ -120,6 +108,7 @@
               <div class="page-heading-details">
                   <p>{{ account.employeeNumber }}</p>
                   <span class="status" [class.status--off]="account.status === 'inactive'">{{ account.status === 'inactive' ? '已停用' : '在職' }}</span>
+                  @if (canManage()) { <p class="hint">{{ syncStatus(account) }}</p> }
               </div>
               <div class="file-actions u-flex">
                 <noah-button type="button" message="修改" (click)="openEditor(account)" [disabled]="saving()"></noah-button>
@@ -133,7 +122,7 @@
             @if (disableTarget(); as target) {
               <section class="panel">
                 <h2>停用 {{ target.displayName }}？</h2>
-                <p>停用後無法登入。之後可以在這裡恢復。</p>
+                <p>停用後會保留 Keycloak 帳號，但會停止登入並登出所有工作階段。員工資料與歷史紀錄會保留；之後可重新啟用登入帳號。</p>
                 <div class="actions u-flex">
                   <noah-button type="button" variant="danger" message="確認停用" (click)="disable()" [disabled]="saving()"></noah-button>
                   <noah-button type="button" variant="secondary" message="取消" (click)="disableTarget.set(null)" [disabled]="saving()"></noah-button>
@@ -235,6 +224,27 @@
                 </table>
               }
             }
+            @if (restoreTarget(); as target) {
+              <noah-dialog [open]="true" mode="content" eyebrow="人資管理" title="恢復登入帳號" [closeOnBackdrop]="!saving()" (closed)="closeRestore()">
+                <p>會保留 {{ target.displayName }} 的員工資料，重設登入初始密碼並重新啟用帳號；若原帳號不存在，才會建立新帳號。</p>
+                @if (error()) { <p class="employee-dialog__error" role="alert">{{ error() }}</p> }
+                <form id="restore-employee-form" [formGroup]="restoreForm" (ngSubmit)="confirmRestore()">
+                  <div class="employee-dialog__body u-grid">
+                    <app-field>身分證字號
+                      <input noahInput formControlName="nationalId" maxlength="10" autocomplete="off" spellcheck="false" required>
+                    </app-field>
+                    <app-field>新登入初始密碼
+                      <input noahInput formControlName="initialPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+                      <span class="hint">至少 12 個字元，首次登入時需更改。</span>
+                    </app-field>
+                  </div>
+                </form>
+                <div noahDialogActions class="employee-dialog__actions">
+                  <noah-button type="button" message="恢復登入帳號" (click)="confirmRestore()" [disabled]="restoreForm.invalid || saving()"></noah-button>
+                  <noah-button type="button" variant="secondary" message="取消" (click)="closeRestore()" [disabled]="saving()"></noah-button>
+                </div>
+              </noah-dialog>
+            }
             }
           } @else if (selectedNumber()) {
             <noah-page-heading title="員工資料" [breadcrumbs]="breadcrumbs()" />
@@ -242,11 +252,17 @@
           } @else {
             <noah-page-heading title="員工名冊" [breadcrumbs]="breadcrumbs()" />
             <form class="roster-bar roster-bar--search" (ngSubmit)="search()">
-              <app-select-field class="bar-control" [formControl]="departmentFilter" emptyLabel="全部部門" [options]="departmentSelectOptions()" />
-              <app-select-field class="bar-control" [formControl]="titleFilter" emptyLabel="全部職稱" [options]="filteredTitleSelectOptions()" />
-              <input noahInput class="bar-control roster-bar__search" [formControl]="query" type="search" maxlength="100" placeholder="姓名或編號" aria-label="搜尋">
-              <noah-button type="button" variant="primary" message="新增員工" (click)="openEditor()" [disabled]="saving()"></noah-button>
+              @if (canManage()) {
+                <app-select-field class="bar-control" [formControl]="departmentFilter" emptyLabel="全部部門" [options]="departmentSelectOptions()" />
+                <app-select-field class="bar-control" [formControl]="titleFilter" emptyLabel="全部職稱" [options]="filteredTitleSelectOptions()" />
+              }
+              <input noahInput class="roster-bar__search" [formControl]="query" type="search" maxlength="100" placeholder="請輸入姓名或員工編號" aria-label="搜尋員工姓名或編號">
             </form>
+            @if (canManage()) {
+              <div class="roster-actions">
+                <noah-button type="button" variant="primary" message="新增員工" (click)="openEditor()" [disabled]="saving()"></noah-button>
+              </div>
+            }
             @if (listError()) {
               <p class="error" role="alert">{{ listError() }}</p>
             } @else if (loading()) {
@@ -263,7 +279,7 @@
                       <th scope="col">部門</th>
                       <th scope="col">職稱</th>
                       <th scope="col">狀態</th>
-                      <th scope="col">操作</th>
+                      @if (canManage()) { <th scope="col">操作</th> }
                     </tr>
                   </thead>
                   <tbody>
@@ -271,7 +287,11 @@
                       <tr>
                         <td>{{ account.employeeNumber }}</td>
                         <td>
-                          <a class="person-link" [routerLink]="personRoute(account)">{{ personName(account) }}</a>
+                          @if (canManage()) {
+                            <a class="person-link" [routerLink]="personRoute(account)">{{ personName(account) }}</a>
+                          } @else {
+                            <span>{{ personName(account) }}</span>
+                          }
                           @if (displayNote(account); as note) {
                             <span class="person-note">（{{ note }}）</span>
                           }
@@ -279,9 +299,11 @@
                         <td>{{ account.department || '—' }}</td>
                         <td>{{ account.jobTitle || '—' }}</td>
                         <td><span class="status" [class.status--off]="account.status === 'inactive'">{{ account.status === 'inactive' ? '已停用' : '在職' }}</span></td>
-                        <td>
-                          <noah-button type="button" variant="secondary" message="修改" (click)="openEditor(account)" [disabled]="saving()"></noah-button>
-                        </td>
+                        @if (canManage()) {
+                          <td>
+                            <noah-button type="button" variant="secondary" message="修改" (click)="openEditor(account)" [disabled]="saving()"></noah-button>
+                          </td>
+                        }
                       </tr>
                     }
                   </tbody>
@@ -296,22 +318,13 @@
             }
           }
           @if (editor() === 'create') {
-            <div class="employee-scrim" (click)="closeEditor()">
-              <section class="employee-dialog" role="dialog" aria-modal="true" aria-labelledby="employee-dialog-title" (click)="$event.stopPropagation()">
-                <header class="employee-dialog__head">
-                  <div>
-                    <p class="employee-dialog__eyebrow">人資管理</p>
-                    <h2 id="employee-dialog-title">新增員工</h2>
-                  </div>
-                  <button class="employee-dialog__close" type="button" aria-label="關閉" (click)="closeEditor()" [disabled]="saving()">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
-                  </button>
-                </header>
-                @if (error()) { <p class="employee-dialog__error" role="alert">{{ error() }}</p> }
-                <form class="employee-dialog__form" [formGroup]="form" (ngSubmit)="save()">
+            <noah-dialog [open]="true" mode="content" eyebrow="人資管理" title="新增員工" size="large" [closeOnBackdrop]="!saving()" (closed)="closeEditor()">
+              @if (error()) { <p class="employee-dialog__error" role="alert">{{ error() }}</p> }
+              <form id="employee-form" class="employee-dialog__form" [formGroup]="form" (ngSubmit)="save()">
                   <div class="employee-dialog__body editor u-grid">
                     <app-field>員工編號
-                      <input noahInput formControlName="employeeNumber" maxlength="32" autocomplete="off" required>
+                      <input noahInput [value]="nextEmployeeNumber() || (nextEmployeeNumberError() ? '讀取失敗' : '讀取中…')" readonly aria-readonly="true">
+                      @if (nextEmployeeNumberError()) { <span class="hint">無法讀取員工編號，請關閉後重新開啟表單。</span> }
                     </app-field>
                     <app-field>身分證字號
                       <input noahInput formControlName="nationalId" maxlength="10" autocomplete="off" spellcheck="false" required>
@@ -321,58 +334,39 @@
                     </app-field>
                     <app-field>部門
                       <app-select-field formControlName="departmentId" emptyLabel="選擇部門" [options]="departmentSelectOptions()" />
-                      @if (departments().length === 0) {
-                        <span class="hint">請先到「組織」建立部門，再新增員工。</span>
-                      }
                     </app-field>
                     <app-field>職稱
                       <app-select-field formControlName="jobTitle" emptyLabel="選擇職稱" [options]="jobTitleSelectOptions()" />
                     </app-field>
                     <app-field>到職日
-                      <app-date-field formControlName="hiredOn"></app-date-field>
+                      <noah-date-picker formControlName="hiredOn"></noah-date-picker>
                       @if (form.controls.hiredOn.value) { <span class="hint">年資 {{ tenureLabel(form.controls.hiredOn.value) }}</span> }
                     </app-field>
                     <app-field>生日
-                      <app-date-field formControlName="bornOn"></app-date-field>
+                      <noah-date-picker formControlName="bornOn"></noah-date-picker>
                     </app-field>
                     <app-field>雇用型態
                       <app-select-field formControlName="employmentType" emptyLabel="選擇雇用型態" [options]="employmentTypes" />
                     </app-field>
-                    <app-field>權限
-                      <app-select-field formControlName="role" [options]="roles" />
-                    </app-field>
                     <app-field>直屬主管
                       <app-select-field formControlName="managerEmployeeNumber" [options]="managerSelectOptions()" />
                     </app-field>
-                    <app-field>姓氏
-                      <input noahInput formControlName="lastName" maxlength="48" required>
-                    </app-field>
-                    <app-field>名字
-                      <input noahInput formControlName="firstName" maxlength="48" required>
-                    </app-field>
-                    <app-field>顯示名稱
-                      <input noahInput formControlName="displayName" maxlength="100" required>
-                      <span class="hint">用在名單、表頭和主管選單，不會跟著姓名改。</span>
+                    <app-field>姓名
+                      <input noahInput formControlName="name" maxlength="100" required>
                     </app-field>
                     <app-field>電子郵件
                       <input noahInput formControlName="email" type="email" maxlength="254" required>
                     </app-field>
-                    <app-field>初始密碼
-                      <input noahInput formControlName="initialPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
-                      <span class="hint">至少 12 個字元，員工首次登入時需更改。</span>
-                    </app-field>
-                    @if (form.controls.employeeNumber.touched && form.controls.employeeNumber.hasError('pattern')) {
-                      <p class="hint">員工編號以英文字母或數字開頭，可用連字號和底線。</p>
-                    }
+                    <span class="hint employee-dialog__password-note">員工編號會依序產生；初始密碼為生日（YYYYMMDD），首次登入時需更改。</span>
                   </div>
-                  <footer class="employee-dialog__actions">
-                    <noah-button type="button" variant="secondary" message="取消" (click)="closeEditor()" [disabled]="saving()"></noah-button>
-                    <noah-button type="submit" variant="primary" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="form.invalid || saving()"></noah-button>
-                  </footer>
-                </form>
-              </section>
-            </div>
+              </form>
+              <div noahDialogActions class="employee-dialog__actions">
+                <noah-button type="button" variant="primary" [message]="saving() ? '儲存中…' : '儲存'" (click)="save()" [disabled]="form.invalid || saving() || !nextEmployeeNumber()"></noah-button>
+                <noah-button type="button" variant="secondary" message="取消" (click)="closeEditor()" [disabled]="saving()"></noah-button>
+              </div>
+            </noah-dialog>
           }
+
         } @else if (section() === 'organization') {
           <noah-page-heading title="組織架構" [breadcrumbs]="breadcrumbs()" />
           <div class="roster-bar">
