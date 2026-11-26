@@ -133,7 +133,7 @@ async function main() {
 
     installFrontend(root);
     const processExit = launch(process.execPath, ['node_modules/@angular/cli/bin/ng.js',
-        'serve', '--host', 'localhost', '--port', String(frontend), '--proxy-config', 'proxy.conf.mjs'], env);
+        'serve', '--port', String(frontend)], env);
 
     const startup = new AbortController();
     const ready = await Promise.race([
