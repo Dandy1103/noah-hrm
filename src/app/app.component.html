@@ -318,10 +318,10 @@
             }
           }
           @if (editor() === 'create') {
-            <noah-dialog [open]="true" mode="content" eyebrow="人資管理" title="新增員工" size="large" [closeOnBackdrop]="!saving()" (closed)="closeEditor()">
+            <noah-dialog class="employee-create-dialog" [open]="true" mode="content" eyebrow="人資管理" title="新增員工" size="large" [closeOnBackdrop]="!saving()" (closed)="closeEditor()">
               @if (error()) { <p class="employee-dialog__error" role="alert">{{ error() }}</p> }
               <form id="employee-form" class="employee-dialog__form" [formGroup]="form" (ngSubmit)="save()">
-                  <div class="employee-dialog__body editor u-grid">
+                  <div class="employee-dialog__body u-grid">
                     <app-field>員工編號
                       <input noahInput [value]="nextEmployeeNumber() || (nextEmployeeNumberError() ? '讀取失敗' : '讀取中…')" readonly aria-readonly="true">
                       @if (nextEmployeeNumberError()) { <span class="hint">無法讀取員工編號，請關閉後重新開啟表單。</span> }
@@ -357,7 +357,6 @@
                     <app-field>電子郵件
                       <input noahInput formControlName="email" type="email" maxlength="254" required>
                     </app-field>
-                    <span class="hint employee-dialog__password-note">員工編號會依序產生；初始密碼為生日（YYYYMMDD），首次登入時需更改。</span>
                   </div>
               </form>
               <div noahDialogActions class="employee-dialog__actions">

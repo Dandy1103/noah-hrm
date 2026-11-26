@@ -3,6 +3,9 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
+      "@angular/*": [
+        "./node_modules/@angular/*"
+      ],
       "@dandy1103/ui": [
         "../noah-ui/projects/ui/src/public-api.ts"
       ]

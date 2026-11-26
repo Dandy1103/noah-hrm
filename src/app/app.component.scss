@@ -66,6 +66,10 @@ router-outlet {
 
 .employee-dialog__form { margin: 0; }
 
+:host ::ng-deep noah-dialog.employee-create-dialog .noah-dialog--large {
+  width: min(50vw, 640px);
+}
+
 .employee-dialog__body {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -73,12 +77,8 @@ router-outlet {
 }
 
 .employee-dialog__body > app-field {
-  grid-column: span 3;
+  grid-column: span 6;
   min-width: 0;
-}
-
-.employee-dialog__password-note {
-  grid-column: 1 / -1;
 }
 
 .employee-dialog__actions {
@@ -374,6 +374,10 @@ h1 {
 
   .employee-dialog__body > app-field {
     grid-column: 1 / -1;
+  }
+
+  :host ::ng-deep noah-dialog.employee-create-dialog .noah-dialog--large {
+    width: 100%;
   }
 
   .roster-bar {
