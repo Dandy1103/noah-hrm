@@ -1,13 +1,13 @@
-import { NoahButtonComponent, NoahInputComponent, NoahPageHeadingComponent, NoahSelectComponent } from '@dandy1103/ui';
+import { NoahButtonComponent, NoahIconButtonComponent, NoahPageHeadingComponent } from '@dandy1103/ui';
 import { Component, inject } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
 import { TableComponent } from '../../../shared/table/table.component';
+import { DepartmentDialogComponent } from '../department-dialog/department-dialog.component';
 import { DepartmentScreen } from '../department-screen';
 
 @Component({
   selector: 'app-organization',
   standalone: true,
-  imports: [NoahInputComponent, NoahPageHeadingComponent, NoahButtonComponent, NoahSelectComponent, ReactiveFormsModule, TableComponent],
+  imports: [NoahPageHeadingComponent, NoahButtonComponent, NoahIconButtonComponent, TableComponent, DepartmentDialogComponent],
   templateUrl: './organization.component.html',
   styleUrl: '../../../app.component.scss',
 })

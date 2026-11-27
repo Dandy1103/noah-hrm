@@ -13,7 +13,7 @@
                   @if (screen.canManage()) { <p class="hint">{{ screen.syncStatus(account) }}</p> }
               </noah-page-heading>
               <div class="u-flex u-shrink-0 u-gap-sm">
-                <noah-button type="button" message="修改" (click)="screen.openEditor(account)" [disabled]="screen.saving()"></noah-button>
+                <noah-icon-button icon="edit" label="修改" (click)="screen.openEditor(account)" [disabled]="screen.saving()"></noah-icon-button>
                 @if (account.managed && !account.self && account.status === 'active') {
                   <noah-button type="button" variant="secondary" message="停用" (click)="screen.confirmDisable(account)" [disabled]="screen.saving()"></noah-button>
                 } @else if (account.managed && !account.self) {
@@ -75,7 +75,7 @@
               </table>
               <h3>直屬部下</h3>
               @if (screen.personLoading() && screen.reports().length === 0) {
-                <p class="hint">讀取中…</p>
+                <noah-spinner label="讀取中" />
               } @else if (screen.reports().length === 0) {
                 <p class="hint">沒有直屬部下。</p>
               } @else {
@@ -102,7 +102,7 @@
               }
               <h3>近期</h3>
               @if (screen.personLoading() && screen.recent().length === 0) {
-                <p class="hint">讀取中…</p>
+                <noah-spinner label="讀取中" />
               } @else if (screen.recent().length === 0) {
                 <p class="hint">還沒有出勤、請假、加班或出差。</p>
               } @else {
@@ -149,10 +149,6 @@
             }
             @if (screen.listError()) {
               <p class="error" role="alert">{{ screen.listError() }}</p>
-            } @else if (screen.loading()) {
-              <p class="empty" role="status">讀取員工中…</p>
-            } @else if (screen.accounts().length === 0) {
-              <p class="empty">沒有符合的員工。</p>
             } @else {
               <app-table>
                 <table aria-label="員工名冊">
@@ -167,39 +163,56 @@
                     </tr>
                   </thead>
                   <tbody>
-                    @for (account of screen.accounts(); track account.employeeNumber) {
-                      <tr>
-                        <td>{{ account.employeeNumber }}</td>
-                        <td>
-                          @if (screen.canManage()) {
-                            <a class="person-link" [routerLink]="screen.personRoute(account)">{{ screen.personName(account) }}</a>
-                          } @else {
-                            <span>{{ screen.personName(account) }}</span>
-                          }
-                          @if (screen.displayNote(account); as note) {
-                            <span class="person-note">（{{ note }}）</span>
-                          }
+                    @if (screen.loading()) {
+                      <tr class="is-fill">
+                        <td [attr.colspan]="screen.listColumnCount()">
+                          <noah-spinner label="讀取員工中" />
                         </td>
-                        <td>{{ account.department || '—' }}</td>
-                        <td>{{ account.jobTitle || '—' }}</td>
-                        <td><span class="status" [class.status--off]="account.status === 'inactive'">{{ account.status === 'inactive' ? '已停用' : '在職' }}</span></td>
-                        @if (screen.canManage()) {
-                          <td>
-                            <noah-button type="button" variant="secondary" message="修改" (click)="screen.openEditor(account)" [disabled]="screen.saving()"></noah-button>
-                          </td>
-                        }
                       </tr>
+                    } @else if (screen.accounts().length === 0) {
+                      <tr class="is-fill">
+                        <td [attr.colspan]="screen.listColumnCount()">沒有符合的員工。</td>
+                      </tr>
+                    } @else {
+                      @for (account of screen.accounts(); track account.employeeNumber) {
+                        <tr>
+                          <td>{{ account.employeeNumber }}</td>
+                          <td>
+                            @if (screen.canManage()) {
+                              <a class="person-link" [routerLink]="screen.personRoute(account)">{{ screen.personName(account) }}</a>
+                            } @else {
+                              <span>{{ screen.personName(account) }}</span>
+                            }
+                            @if (screen.displayNote(account); as note) {
+                              <span class="person-note">（{{ note }}）</span>
+                            }
+                          </td>
+                          <td>{{ account.department || '—' }}</td>
+                          <td>{{ account.jobTitle || '—' }}</td>
+                          <td><span class="status" [class.status--off]="account.status === 'inactive'">{{ account.status === 'inactive' ? '已停用' : '在職' }}</span></td>
+                          @if (screen.canManage()) {
+                            <td>
+                              <noah-icon-button icon="edit" label="修改" (click)="screen.openEditor(account)" [disabled]="screen.saving()"></noah-icon-button>
+                            </td>
+                          }
+                        </tr>
+                      }
+                      @for (blank of screen.listBlankRows(); track blank) {
+                        <tr class="is-blank">
+                          <td [attr.colspan]="screen.listColumnCount()"></td>
+                        </tr>
+                      }
                     }
                   </tbody>
                 </table>
               </app-table>
             }
-            @if (screen.offset() || screen.hasMore()) {
-              <div class="u-flex u-flex-wrap u-gap-sm u-mt-md">
-                <noah-button type="button" variant="secondary" message="上一頁" (click)="screen.loadAccounts(screen.offset() - screen.pageSize())" [disabled]="!screen.offset() || screen.loading()"></noah-button>
-                <noah-button type="button" variant="secondary" message="下一頁" (click)="screen.loadAccounts(screen.offset() + screen.pageSize())" [disabled]="!screen.hasMore() || screen.loading()"></noah-button>
-              </div>
-            }
+            <noah-pager
+              [page]="screen.listPage()"
+              [pageCount]="screen.listPageCount()"
+              [disabled]="screen.loading()"
+              (pageChange)="screen.goListPage($event)" />
+
           }
           @if (screen.editor()) {
             <app-employee-dialog />

@@ -144,8 +144,8 @@
             }
             <td>
               <div class="u-flex u-flex-wrap u-gap-sm">
-                <noah-button type="button" variant="secondary" message="修改" (click)="openEditor(record)" [disabled]="saving()"></noah-button>
-                <noah-button type="button" variant="secondary" message="刪除" (click)="confirmDelete(record)" [disabled]="saving()"></noah-button>
+                <noah-icon-button icon="edit" label="修改" (click)="openEditor(record)" [disabled]="saving()"></noah-icon-button>
+                <noah-icon-button icon="delete" label="刪除" variant="danger" (click)="confirmDelete(record)" [disabled]="saving()"></noah-icon-button>
               </div>
             </td>
           </tr>

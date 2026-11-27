@@ -42,3 +42,31 @@ app-table {
 .data-table tbody tr:last-child td {
     border-bottom: 0;
 }
+
+.data-table tbody tr.is-blank td {
+    height: 64px;
+}
+
+.data-table tbody tr.is-blank:hover td {
+    background: inherit;
+}
+
+.data-table tbody tr.is-blank:nth-child(even):hover td {
+    background: var(--color-surface-muted);
+}
+
+.data-table tbody tr.is-fill td {
+    height: calc(64px * 10);
+    text-align: center;
+    vertical-align: middle;
+    color: var(--color-text-secondary);
+    background: var(--color-surface-raised);
+}
+
+.data-table tbody tr.is-fill:hover td {
+    background: var(--color-surface-raised);
+}
+
+.data-table tbody tr.is-fill noah-spinner {
+    display: block;
+}

@@ -14,6 +14,23 @@ interface OrganizationRow {
   depth: number;
 }
 
+interface HeadPerson {
+  employeeNumber: string;
+  displayName: string;
+  status: 'active' | 'inactive';
+}
+
+interface AccountPage {
+  accounts: Array<{
+    employeeNumber: string;
+    displayName: string;
+    status: 'active' | 'inactive';
+    departmentId: number | null;
+  }>;
+  hasMore: boolean;
+  pageSize: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DepartmentScreen {
   private readonly http = inject(HttpClient);
@@ -22,6 +39,7 @@ export class DepartmentScreen {
   private readonly access = inject(HrmAccess);
   private readonly directory = inject(HrmDirectory);
   private toastTimer = 0;
+  private headLoad = 0;
 
   readonly peopleError = this.directory.peopleError;
   readonly departments = this.directory.departments;
@@ -32,6 +50,7 @@ export class DepartmentScreen {
   readonly error = signal('');
   readonly departmentEditor = signal<'create' | Department | null>(null);
   readonly deleteDepartmentTarget = signal<Department | null>(null);
+  private readonly headPeople = signal<HeadPerson[]>([]);
   readonly departmentForm = this.formBuilder.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     parentDepartmentId: [''],
@@ -48,9 +67,10 @@ export class DepartmentScreen {
   ]);
 
   private readonly trail = computed(() => {
-    const editor = this.departmentEditor();
-    if (editor === 'create') return [{ label: '組織', go: 'organization' }, { label: '新增部門', go: '' }];
-    if (editor) return [{ label: '組織', go: 'organization' }, { label: '修改部門', go: '' }];
+    const screen = hrmScreenFromLocation();
+    if (screen.section === 'organization' && screen.view === 'new') {
+      return [{ label: '組織', go: 'organization' }, { label: '新增部門', go: '' }];
+    }
     return [{ label: '組織', go: '' }];
   });
 
@@ -85,14 +105,17 @@ export class DepartmentScreen {
   parentDepartmentSelectOptions(): NoahSelectOption[] {
     return [
       { value: '', label: '無' },
-      ...this.parentOptions().map((department) => ({ value: String(department.departmentId), label: department.name })),
+      ...this.parentOptions().map((department) => ({
+        value: String(department.departmentId),
+        label: department.name,
+      })),
     ];
   }
 
   departmentHeadSelectOptions(): NoahSelectOption[] {
     return [
       { value: '', label: '不指定' },
-      ...this.directory.people().map((person) => ({
+      ...this.headPeople().map((person) => ({
         value: person.employeeNumber,
         label: `${person.displayName}（${person.employeeNumber}）${person.status === 'inactive' ? '，已停用' : ''}`,
       })),
@@ -104,13 +127,26 @@ export class DepartmentScreen {
     return department.employeeCount === 0 && !hasChild;
   }
 
+  editingDepartment(): Department | null {
+    const editor = this.departmentEditor();
+    return editor && editor !== 'create' ? editor : null;
+  }
+
   openDepartmentEditor(department?: Department): void {
-    if (department) this.router.navigate([HRM_ROOT, 'organization', department.departmentId, 'edit']);
-    else this.router.navigate([HRM_ROOT, 'organization', 'new']);
+    if (department) {
+      this.presentEditor(department);
+      return;
+    }
+    this.router.navigate([HRM_ROOT, 'organization', 'new']);
   }
 
   closeDepartmentEditor(): void {
-    this.router.navigate([HRM_ROOT, 'organization']);
+    if (this.saving()) return;
+    this.resetEditor();
+    const screen = hrmScreenFromLocation();
+    if (screen.section === 'organization' && (screen.view === 'new' || screen.view === 'edit')) {
+      this.router.navigate([HRM_ROOT, 'organization']);
+    }
   }
 
   saveDepartment(): void {
@@ -132,7 +168,7 @@ export class DepartmentScreen {
   }
 
   confirmDeleteDepartment(department: Department): void {
-    this.closeDepartmentEditor();
+    this.resetEditor();
     this.message.set('');
     this.deleteDepartmentTarget.set(department);
   }
@@ -155,8 +191,12 @@ export class DepartmentScreen {
 
   private parentOptions(): Department[] {
     const editor = this.departmentEditor();
-    if (editor === 'create' || editor === null) return this.directory.departments();
-    return this.directory.departments().filter((item) => item.departmentId !== editor.departmentId);
+    const editingId = editor && editor !== 'create' ? editor.departmentId : null;
+    return this.directory.departments().filter((department) => {
+      if (department.parentDepartmentId != null) return false;
+      if (editingId != null && department.departmentId === editingId) return false;
+      return true;
+    });
   }
 
   private buildOrganizationRows(): OrganizationRow[] {
@@ -186,6 +226,8 @@ export class DepartmentScreen {
   }
 
   private resetEditor() {
+    this.headLoad += 1;
+    this.headPeople.set([]);
     this.departmentForm.reset();
     this.departmentEditor.set(null);
     this.error.set('');
@@ -201,6 +243,45 @@ export class DepartmentScreen {
       headEmployeeNumber: department.headEmployeeNumber ?? '',
     } : {});
     this.departmentEditor.set(department ?? 'create');
+    this.headPeople.set([]);
+    if (department) this.loadHeadPeople(department);
+  }
+
+  private loadHeadPeople(department: Department) {
+    const load = ++this.headLoad;
+    const currentHead = department.headEmployeeNumber?.trim() ?? '';
+    const found: HeadPerson[] = [];
+    const seen = new Set<string>();
+    const pull = (offset: number) => {
+      this.http.get<AccountPage>('/api/hrm/accounts', { params: { q: '', offset } }).subscribe({
+        next: (page) => {
+          if (load !== this.headLoad) return;
+          for (const account of page.accounts) {
+            const inDepartment = account.departmentId === department.departmentId;
+            const isCurrentHead = currentHead !== '' && account.employeeNumber === currentHead;
+            if (!inDepartment && !isCurrentHead) continue;
+            if (seen.has(account.employeeNumber)) continue;
+            seen.add(account.employeeNumber);
+            found.push({
+              employeeNumber: account.employeeNumber,
+              displayName: account.displayName,
+              status: account.status,
+            });
+          }
+          if (page.hasMore && offset < page.pageSize * 4) {
+            pull(offset + page.pageSize);
+            return;
+          }
+          this.headPeople.set(found);
+        },
+        error: (error: HttpErrorResponse) => {
+          if (load !== this.headLoad) return;
+          if (error.status === 401) this.access.signIn();
+          this.headPeople.set([]);
+        },
+      });
+    };
+    pull(0);
   }
 
   private showToast(text: string) {
@@ -214,14 +295,14 @@ export class DepartmentScreen {
     this.saving.set(true);
     this.error.set('');
     this.message.set('');
-    const editing = hrmScreenFromLocation().view !== 'list';
+    const screen = hrmScreenFromLocation();
+    const onEditorRoute = screen.section === 'organization' && (screen.view === 'new' || screen.view === 'edit');
     request.pipe(finalize(() => this.saving.set(false))).subscribe({
       next: () => {
-        this.departmentForm.reset();
-        this.departmentEditor.set(null);
+        this.resetEditor();
         this.deleteDepartmentTarget.set(null);
         this.showToast(success);
-        if (editing) this.router.navigate([HRM_ROOT, 'organization']);
+        if (onEditorRoute) this.router.navigate([HRM_ROOT, 'organization']);
         this.access.loadDisplayName();
         this.directory.loadDepartments();
         this.directory.loadPeople();

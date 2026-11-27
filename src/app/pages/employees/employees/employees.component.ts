@@ -1,4 +1,4 @@
-import { NoahButtonComponent, NoahInputComponent, NoahPageHeadingComponent, NoahSelectComponent } from '@dandy1103/ui';
+import { NoahButtonComponent, NoahIconButtonComponent, NoahInputComponent, NoahPageHeadingComponent, NoahPagerComponent, NoahSelectComponent, NoahSpinnerComponent } from '@dandy1103/ui';
 import { Component, inject } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -10,7 +10,7 @@ import { EmployeeRestoreDialogComponent } from '../employee-restore-dialog/emplo
 @Component({
   selector: 'app-employees',
   standalone: true,
-  imports: [NoahInputComponent, NoahPageHeadingComponent, NoahButtonComponent, NoahSelectComponent, ReactiveFormsModule, RouterLink, TableComponent, EmployeeDialogComponent, EmployeeRestoreDialogComponent],
+  imports: [NoahInputComponent, NoahPageHeadingComponent, NoahButtonComponent, NoahIconButtonComponent, NoahPagerComponent, NoahSelectComponent, NoahSpinnerComponent, ReactiveFormsModule, RouterLink, TableComponent, EmployeeDialogComponent, EmployeeRestoreDialogComponent],
   templateUrl: './employees.component.html',
   styleUrl: '../../../app.component.scss',
 })

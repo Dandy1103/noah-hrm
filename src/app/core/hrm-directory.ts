@@ -17,6 +17,7 @@ export interface PersonOption {
   employeeNumber: string;
   displayName: string;
   status: 'active' | 'inactive';
+  departmentId: number | null;
 }
 
 @Injectable({ providedIn: 'root' })

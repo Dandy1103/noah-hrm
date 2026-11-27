@@ -1,27 +1,13 @@
 <main>
-        @if (screen.error()) { <p class="error" role="alert">{{ screen.error() }}</p> }
+        @if (screen.error() && !screen.departmentEditor()) { <p class="error" role="alert">{{ screen.error() }}</p> }
         @if (screen.peopleError()) {
           <p class="error" role="alert">{{ screen.peopleError() }}</p>
         }
 
           <noah-page-heading title="組織架構" [breadcrumbs]="screen.breadcrumbs()" />
-          <div class="u-flex u-items-center u-gap-sm u-mb-md">
-            <noah-button type="button" message="新增部門" (click)="screen.openDepartmentEditor()" [disabled]="screen.saving()"></noah-button>
+          <div class="u-flex u-justify-end u-mb-sm">
+            <noah-button type="button" size="small" variant="primary" message="新增部門" (click)="screen.openDepartmentEditor()" [disabled]="screen.saving()"></noah-button>
           </div>
-          @if (screen.departmentEditor(); as edit) {
-            <section class="panel u-max-w-form">
-              <h2>{{ edit === 'create' ? '新增部門' : '修改部門' }}</h2>
-              <form class="u-form-grid" [formGroup]="screen.departmentForm" (ngSubmit)="screen.saveDepartment()">
-                <noah-input label="部門名稱" formControlName="name" maxlength="100" required />
-                <noah-select label="上層部門" formControlName="parentDepartmentId" [options]="screen.parentDepartmentSelectOptions()" />
-                <noah-select label="部門主管" formControlName="headEmployeeNumber" [options]="screen.departmentHeadSelectOptions()" />
-                <div class="u-col-span-full u-flex u-flex-wrap u-gap-sm">
-                  <noah-button type="submit" [message]="screen.saving() ? '儲存中…' : '儲存'" [disabled]="screen.departmentForm.invalid || screen.saving()"></noah-button>
-                  <noah-button type="button" variant="secondary" message="取消" (click)="screen.closeDepartmentEditor()" [disabled]="screen.saving()"></noah-button>
-                </div>
-              </form>
-            </section>
-          }
           @if (screen.deleteDepartmentTarget(); as department) {
             <section class="panel u-max-w-form">
               <h2>刪除 {{ department.name }}？</h2>
@@ -57,9 +43,9 @@
                       <td>{{ row.department.employeeCount }}</td>
                       <td>
                         <div class="u-flex u-flex-wrap u-gap-sm">
-                          <noah-button type="button" variant="secondary" message="修改" (click)="screen.openDepartmentEditor(row.department)" [disabled]="screen.saving()"></noah-button>
+                          <noah-icon-button icon="edit" label="修改" (click)="screen.openDepartmentEditor(row.department)" [disabled]="screen.saving()"></noah-icon-button>
                           @if (screen.canDeleteDepartment(row.department)) {
-                            <noah-button type="button" variant="secondary" message="刪除" (click)="screen.confirmDeleteDepartment(row.department)" [disabled]="screen.saving()"></noah-button>
+                            <noah-icon-button icon="delete" label="刪除" variant="danger" (click)="screen.confirmDeleteDepartment(row.department)" [disabled]="screen.saving()"></noah-icon-button>
                           }
                         </div>
                       </td>
@@ -70,6 +56,9 @@
             </app-table>
           }
     </main>
+    @if (screen.departmentEditor()) {
+      <app-department-dialog />
+    }
     @if (screen.message()) {
       <p class="toast" role="status">{{ screen.message() }}</p>
     }

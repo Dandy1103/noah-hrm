@@ -1,0 +1,23 @@
+@if (screen.editingDepartment(); as edit) {
+  <noah-dialog [open]="true" mode="content" eyebrow="組織架構" title="修改部門" size="medium" [closeOnBackdrop]="!screen.saving()" (closed)="screen.closeDepartmentEditor()">
+    @if (screen.error()) { <p class="error" role="alert">{{ screen.error() }}</p> }
+    <form id="department-form" class="u-form-grid" [formGroup]="screen.departmentForm" (ngSubmit)="screen.saveDepartment()">
+      <noah-input label="部門名稱" formControlName="name" maxlength="100" required />
+      <noah-select label="上層部門" formControlName="parentDepartmentId" [options]="screen.parentDepartmentSelectOptions()" />
+      <noah-select label="部門主管" formControlName="headEmployeeNumber" [options]="screen.departmentHeadSelectOptions()" />
+    </form>
+    <noah-button noahDialogActions type="button" variant="primary" [message]="screen.saving() ? '儲存中…' : '儲存'" (click)="screen.saveDepartment()" [disabled]="screen.departmentForm.invalid || screen.saving()"></noah-button>
+    <noah-button noahDialogActions type="button" variant="secondary" message="取消" (click)="screen.closeDepartmentEditor()" [disabled]="screen.saving()"></noah-button>
+  </noah-dialog>
+} @else if (screen.departmentEditor() === 'create') {
+  <noah-dialog [open]="true" mode="content" eyebrow="組織架構" title="新增部門" size="medium" [closeOnBackdrop]="!screen.saving()" (closed)="screen.closeDepartmentEditor()">
+    @if (screen.error()) { <p class="error" role="alert">{{ screen.error() }}</p> }
+    <form id="department-form" class="u-form-grid" [formGroup]="screen.departmentForm" (ngSubmit)="screen.saveDepartment()">
+      <noah-input label="部門名稱" formControlName="name" maxlength="100" required />
+      <noah-select label="上層部門" formControlName="parentDepartmentId" [options]="screen.parentDepartmentSelectOptions()" />
+      <noah-select label="部門主管" formControlName="headEmployeeNumber" [options]="screen.departmentHeadSelectOptions()" />
+    </form>
+    <noah-button noahDialogActions type="button" variant="primary" [message]="screen.saving() ? '儲存中…' : '儲存'" (click)="screen.saveDepartment()" [disabled]="screen.departmentForm.invalid || screen.saving()"></noah-button>
+    <noah-button noahDialogActions type="button" variant="secondary" message="取消" (click)="screen.closeDepartmentEditor()" [disabled]="screen.saving()"></noah-button>
+  </noah-dialog>
+}

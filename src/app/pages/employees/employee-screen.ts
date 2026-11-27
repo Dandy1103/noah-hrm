@@ -37,6 +37,7 @@ interface AccountPage {
   accounts: EmployeeAccount[];
   hasMore: boolean;
   pageSize: number;
+  total: number;
 }
 
 interface DutySnippet {
@@ -78,24 +79,17 @@ export class EmployeeScreen {
 
   readonly canManage = this.access.canManage;
   readonly peopleError = this.directory.peopleError;
-  readonly jobTitles = [
-    '總經理',
-    '管理員',
-    '業務部主管',
-    '業務專員',
-    '後端技術長',
-    '後端工程師',
-    '測試工程師',
-    '資安長',
-    '維運工程師',
-    '前端技術長',
-    '前端工程師',
-    '人資部主管',
-    '專案部主管',
-    '專案經理（PM）',
-    '設計部主管',
-    'UI/UX 工程師',
+  private readonly departmentJobTitles: Array<{ match: string[]; titles: string[] }> = [
+    { match: ['總經理室'], titles: ['總經理', '管理員'] },
+    { match: ['業務'], titles: ['業務部主管', '業務專員'] },
+    { match: ['後端'], titles: ['後端技術長', '後端工程師', '測試工程師'] },
+    { match: ['資訊安全', '資安'], titles: ['資安長', '維運工程師'] },
+    { match: ['前端'], titles: ['前端技術長', '前端工程師'] },
+    { match: ['人資財務', '人力資源', '人資'], titles: ['人資部主管'] },
+    { match: ['專案管理'], titles: ['專案部主管', '專案經理', '專案經理（PM）'] },
+    { match: ['專案設計', '設計'], titles: ['設計部主管', 'UI/UX工程師', 'UI/UX 工程師'] },
   ];
+  readonly jobTitles = this.departmentJobTitles.flatMap((group) => group.titles);
   readonly employmentTypes = [
     { value: 'regular', label: '正職' },
     { value: 'part_time', label: '部分工時' },
@@ -125,6 +119,7 @@ export class EmployeeScreen {
   readonly offset = signal(0);
   readonly pageSize = signal(PAGE_SIZE);
   readonly hasMore = signal(false);
+  readonly listTotal = signal(0);
   readonly query = this.formBuilder.control('', [Validators.maxLength(100)]);
   readonly departmentFilter = this.formBuilder.control('');
   readonly titleFilter = this.formBuilder.control('');
@@ -171,11 +166,18 @@ export class EmployeeScreen {
       this.loadAccounts(this.offset());
       this.refreshOpenedAccount();
     });
-    this.departmentFilter.valueChanges.subscribe(() => this.loadAccounts(0));
+    this.departmentFilter.valueChanges.subscribe(() => {
+      this.syncTitleFilterToDepartment();
+      this.loadAccounts(0);
+    });
     this.titleFilter.valueChanges.subscribe(() => this.loadAccounts(0));
     this.query.valueChanges.pipe(debounceTime(300)).subscribe(() => {
       this.appliedQuery = this.query.value.trim();
       this.loadAccounts(0);
+    });
+    this.form.controls.departmentId.valueChanges.subscribe(() => {
+      this.syncJobTitleToDepartment();
+      this.syncManagerToDepartmentHead();
     });
   }
 
@@ -252,6 +254,32 @@ export class EmployeeScreen {
     ];
   }
 
+  listPage(): number {
+    return Math.floor(this.offset() / this.pageSize()) + 1;
+  }
+
+  listPageCount(): number {
+    const total = this.filteredAccounts ? this.filteredAccounts.length : this.listTotal();
+    return Math.max(1, Math.ceil(total / this.pageSize()));
+  }
+
+  listBlankRows(): number[] {
+    if (this.loading() || this.accounts().length === 0) return [];
+    return Array.from({ length: Math.max(0, this.pageSize() - this.accounts().length) }, (_, index) => index);
+  }
+
+  listColumnCount(): number {
+    return this.canManage() ? 6 : 5;
+  }
+
+  goListPage(page: number): void {
+    if (this.loading()) return;
+    const size = this.pageSize();
+    const max = this.listPageCount();
+    if (page < 1 || page > max) return;
+    this.loadAccounts((page - 1) * size);
+  }
+
   loadAccounts(offset = 0): void {
     if (this.departmentFilter.value || this.titleFilter.value) {
       if (offset > 0 && this.filteredAccounts) {
@@ -266,6 +294,7 @@ export class EmployeeScreen {
       const size = this.pageSize();
       this.accounts.set(page.accounts.slice(0, size));
       this.hasMore.set(page.accounts.length > size || page.hasMore);
+      this.listTotal.set(page.total ?? 0);
       this.offset.set(offset);
       this.rememberPage(offset);
       this.rememberTitles(page.accounts);
@@ -433,17 +462,62 @@ export class EmployeeScreen {
   }
 
   private jobTitleChoices(): string[] {
+    const titles = this.titlesForDepartmentId(this.form.controls.departmentId.value);
     const current = this.form.controls.jobTitle.value?.trim() ?? '';
-    if (current && !this.jobTitles.includes(current)) return [current, ...this.jobTitles];
-    return this.jobTitles;
+    if (current && !titles.includes(current)) return [current, ...titles];
+    return titles;
   }
 
   private titleFilterChoices(): string[] {
-    const titles = new Set<string>(this.jobTitles);
-    for (const title of this.seenTitles()) titles.add(title);
+    const base = this.titlesForDepartmentId(this.departmentFilter.value);
+    const titles = new Set<string>(base.length > 0 ? base : this.jobTitles);
+    for (const title of this.seenTitles()) {
+      if (base.length === 0 || base.includes(title)) titles.add(title);
+    }
     const selected = this.titleFilter.value.trim();
     if (selected) titles.add(selected);
     return [...titles];
+  }
+
+  private titlesForDepartmentId(departmentId: string | null | undefined): string[] {
+    const id = departmentId?.trim() ?? '';
+    if (!id) return [];
+    const department = this.directory.departments().find((item) => String(item.departmentId) === id);
+    if (!department) return [];
+    return this.titlesForDepartmentName(department.name);
+  }
+
+  private titlesForDepartmentName(name: string): string[] {
+    const matched = this.departmentJobTitles.find((group) =>
+      group.match.some((keyword) => name.includes(keyword)));
+    return matched ? [...matched.titles] : [];
+  }
+
+  private syncJobTitleToDepartment(): void {
+    const allowed = this.titlesForDepartmentId(this.form.controls.departmentId.value);
+    const current = this.form.controls.jobTitle.value?.trim() ?? '';
+    if (!current) return;
+    if (allowed.length === 0 || !allowed.includes(current)) this.form.controls.jobTitle.setValue('');
+  }
+
+  private syncManagerToDepartmentHead(): void {
+    if (this.editor() !== 'create') return;
+    const id = this.form.controls.departmentId.value?.trim() ?? '';
+    if (!id) {
+      this.form.controls.managerEmployeeNumber.setValue('');
+      return;
+    }
+    const department = this.directory.departments().find((item) => String(item.departmentId) === id);
+    this.form.controls.managerEmployeeNumber.setValue(department?.headEmployeeNumber ?? '');
+  }
+
+  private syncTitleFilterToDepartment(): void {
+    const departmentId = this.departmentFilter.value.trim();
+    if (!departmentId) return;
+    const allowed = this.titlesForDepartmentId(departmentId);
+    const current = this.titleFilter.value.trim();
+    if (!current) return;
+    if (!allowed.includes(current)) this.titleFilter.setValue('', { emitEvent: false });
   }
 
   private managerOptions() {
@@ -796,3 +870,4 @@ function serviceLength(value: string | null): string {
   if (months === 0) return `${years} 年`;
   return `${years} 年 ${months} 個月`;
 }
+

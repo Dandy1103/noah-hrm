@@ -24,10 +24,13 @@ const config = withNativeFederation({
 });
 
 if (localUi) {
-  // Federation builds this source mapping separately from the Shell's npm package.
   config.sharedMappings.push({
     key: '@dandy1103/common',
     path: resolve(__dirname, '../noah-common/projects/common/src/public-api.ts'),
+  });
+  config.sharedMappings.push({
+    key: '@dandy1103/ui',
+    path: resolve(__dirname, '../noah-ui/projects/ui/src/public-api.ts'),
   });
 }
 
