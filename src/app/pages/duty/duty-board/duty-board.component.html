@@ -5,79 +5,44 @@
   <p class="error" role="alert">{{ error() }}</p>
 }
 
-<div class="roster-bar">
+<div class="u-flex u-items-center u-gap-sm u-mb-md">
   <noah-button type="button" [message]="'新增' + title()" (click)="openCreate()" [disabled]="saving()"></noah-button>
 </div>
 
 @if (editor(); as edit) {
-  <section class="panel record">
+  <section class="panel u-max-w-form">
     <h2>{{ edit === 'create' ? '新增' : '修改' }}{{ title() }}</h2>
-    <form class="editor u-grid" [formGroup]="form" (ngSubmit)="save()">
-      <noah-field>員工
-        <app-select-field formControlName="employeeNumber" [options]="staffSelectOptions()" />
-      </noah-field>
+    <form class="u-form-grid" [formGroup]="form" (ngSubmit)="save()">
+      <noah-select label="員工" formControlName="employeeNumber" [options]="staffSelectOptions()" />
 
       @switch (kind) {
         @case ('attendance') {
-          <noah-field>日期
-            <noah-date-picker formControlName="workDate"></noah-date-picker>
-            <span class="hint">同一天一位員工只記一筆。</span>
-          </noah-field>
-          <noah-field>上班
-            <input noahInput formControlName="clockIn" type="time" step="60">
-          </noah-field>
-          <noah-field>下班
-            <input noahInput formControlName="clockOut" type="time" step="60">
-          </noah-field>
-          <noah-field>備註
-            <input noahInput formControlName="note" maxlength="200" autocomplete="off">
-          </noah-field>
+          <noah-date-picker label="日期" formControlName="workDate" hint="同一天一位員工只記一筆。" />
+          <noah-input label="上班" type="time" formControlName="clockIn" step="60" />
+          <noah-input label="下班" type="time" formControlName="clockOut" step="60" />
+          <noah-input label="備註" formControlName="note" maxlength="200" autocomplete="off" />
         }
         @case ('leave') {
-          <noah-field>假別
-            <app-select-field formControlName="leaveType" [options]="leaveTypes" />
-          </noah-field>
-          <noah-field>開始
-            <noah-date-picker formControlName="startsOn"></noah-date-picker>
-          </noah-field>
-          <noah-field>結束
-            <noah-date-picker formControlName="endsOn"></noah-date-picker>
-          </noah-field>
-          <noah-field>備註
-            <input noahInput formControlName="note" maxlength="200" autocomplete="off">
-          </noah-field>
+          <noah-select label="假別" formControlName="leaveType" [options]="leaveTypes" />
+          <noah-date-picker label="開始" formControlName="startsOn" />
+          <noah-date-picker label="結束" formControlName="endsOn" />
+          <noah-input label="備註" formControlName="note" maxlength="200" autocomplete="off" />
         }
         @case ('overtime') {
-          <noah-field>日期
-            <noah-date-picker formControlName="workDate"></noah-date-picker>
-          </noah-field>
-          <noah-field>開始
-            <input noahInput formControlName="startsAt" type="time" step="60" required>
-          </noah-field>
-          <noah-field>結束
-            <input noahInput formControlName="endsAt" type="time" step="60" required>
-          </noah-field>
-          <noah-field>事由
-            <input noahInput formControlName="reason" maxlength="200" autocomplete="off" required>
-          </noah-field>
+          <noah-date-picker label="日期" formControlName="workDate" />
+          <noah-input label="開始" type="time" formControlName="startsAt" step="60" required />
+          <noah-input label="結束" type="time" formControlName="endsAt" step="60" required />
+          <noah-input label="事由" formControlName="reason" maxlength="200" autocomplete="off" required />
         }
         @case ('trip') {
-          <noah-field>地點
-            <input noahInput formControlName="place" maxlength="100" autocomplete="off" required>
-          </noah-field>
-          <noah-field>開始
-            <noah-date-picker formControlName="startsOn"></noah-date-picker>
-          </noah-field>
-          <noah-field>結束
-            <noah-date-picker formControlName="endsOn"></noah-date-picker>
-          </noah-field>
-          <noah-field>事由
-            <input noahInput formControlName="reason" maxlength="200" autocomplete="off" required>
-          </noah-field>
+          <noah-input label="地點" formControlName="place" maxlength="100" autocomplete="off" required />
+          <noah-date-picker label="開始" formControlName="startsOn" />
+          <noah-date-picker label="結束" formControlName="endsOn" />
+          <noah-input label="事由" formControlName="reason" maxlength="200" autocomplete="off" required />
         }
       }
 
-      <div class="actions u-flex">
+      <div class="u-col-span-full u-flex u-flex-wrap u-gap-sm">
         <noah-button type="submit" [message]="saving() ? '儲存中…' : '儲存'" [disabled]="!canSave() || saving()"></noah-button>
         <noah-button type="button" variant="secondary" message="取消" (click)="closeEditor()" [disabled]="saving()"></noah-button>
       </div>
@@ -86,10 +51,10 @@
 }
 
 @if (deleteTarget(); as target) {
-  <section class="panel record">
+  <section class="panel u-max-w-form">
     <h2>刪除這筆{{ title() }}？</h2>
     <p>{{ target.displayName }}，刪除後無法復原。</p>
-    <div class="actions u-flex">
+    <div class="u-flex u-flex-wrap u-gap-sm">
       <noah-button type="button" variant="danger" message="確認刪除" (click)="remove()" [disabled]="saving()"></noah-button>
       <noah-button type="button" variant="secondary" message="取消" (click)="deleteTarget.set(null)" [disabled]="saving()"></noah-button>
     </div>
@@ -178,7 +143,7 @@
               }
             }
             <td>
-              <div class="actions u-flex">
+              <div class="u-flex u-flex-wrap u-gap-sm">
                 <noah-button type="button" variant="secondary" message="修改" (click)="openEditor(record)" [disabled]="saving()"></noah-button>
                 <noah-button type="button" variant="secondary" message="刪除" (click)="confirmDelete(record)" [disabled]="saving()"></noah-button>
               </div>

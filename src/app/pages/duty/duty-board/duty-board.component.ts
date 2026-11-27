@@ -5,14 +5,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { NoahButtonComponent, NoahDatePickerComponent, NoahFieldComponent, NoahInputDirective } from '@dandy1103/ui';
+import { NoahButtonComponent, NoahDatePickerComponent, NoahInputComponent, NoahSelectComponent } from '@dandy1103/ui';
 import type { NoahSelectOption } from '@dandy1103/ui';
-import { SelectFieldComponent } from '../../shared/select-field/select-field.component';
-import { TableComponent } from '../../shared/table/table.component';
-
-const HRM_ROOT = '/hrm';
-
-export type DutyKind = 'attendance' | 'leave' | 'overtime' | 'trip';
+import { TableComponent } from '../../../shared/table/table.component';
+import { HRM_ROOT, type DutyKind } from '../../../core/hrm-location';
 
 interface PersonOption {
   employeeNumber: string;
@@ -40,7 +36,7 @@ interface DutyRecord {
 @Component({
   selector: 'app-duty-board',
   standalone: true,
-  imports: [ReactiveFormsModule, NoahButtonComponent, NoahInputDirective, NoahDatePickerComponent, NoahFieldComponent, SelectFieldComponent, TableComponent],
+  imports: [ReactiveFormsModule, NoahButtonComponent, NoahInputComponent, NoahDatePickerComponent, NoahSelectComponent, TableComponent],
   templateUrl: './duty-board.component.html',
   styleUrl: './duty-board.component.scss',
 })

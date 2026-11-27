@@ -6,6 +6,9 @@
       "@angular/*": [
         "./node_modules/@angular/*"
       ],
+      "@dandy1103/common": [
+        "../noah-common/projects/common/src/public-api.ts"
+      ],
       "@dandy1103/ui": [
         "../noah-ui/projects/ui/src/public-api.ts"
       ]

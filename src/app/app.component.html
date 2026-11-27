@@ -1,32 +1,26 @@
 @switch (screen.access()) {
   @case ('loading') {
-    <main class="gate access-loading" role="status">正在確認人資權限…</main>
+    <main class="u-grid u-place-center u-min-h-40vh u-text-secondary" role="status">正在確認人資權限…</main>
   }
   @case ('signed-out') {
-    <main class="gate">
+    <main class="u-mx-auto u-w-full u-max-w-720 u-px-lg u-pt-xl u-pb-xl">
       <section class="panel">
         @if (screen.signInError === 'unavailable') {
           <p class="error" role="alert">目前無法連線到登入服務，請稍後再試。</p>
-        } @else if (screen.signInError === 'signin') {
-          <p class="error" role="alert">登入未完成，請再試一次。</p>
         } @else {
-          <p>登入後才能使用 Noah HRM。</p>
+          <p class="error" role="alert">登入未完成，請再試一次。</p>
         }
         <a class="text-link" [href]="screen.loginUrl">重新登入</a>
       </section>
     </main>
   }
-  @case ('denied') { <main class="gate"><section class="panel"><p>請用有人資權限的帳號登入。</p></section></main> }
+  @case ('denied') {
+    <main class="u-mx-auto u-w-full u-max-w-720 u-px-lg u-pt-xl u-pb-xl">
+      <section class="panel"><p>請用有人資權限的帳號登入。</p></section>
+    </main>
+  }
   @case ('unavailable') {
-    <div class="access-mask">
-      <section class="access-dialog" role="alertdialog" aria-modal="true" aria-labelledby="access-error-title" aria-describedby="access-error-text">
-        <h2 id="access-error-title">無法讀取權限</h2>
-        <p id="access-error-text">{{ screen.accessError() }}</p>
-        <div class="access-dialog__actions">
-          <noah-button type="button" message="重新整理" (click)="screen.reloadPage()"></noah-button>
-        </div>
-      </section>
-    </div>
+    <noah-dialog [open]="true" mode="alert" title="無法讀取權限" [message]="screen.accessError()" confirmLabel="重新整理" [showClose]="false" [closeOnBackdrop]="false" (confirmed)="screen.reloadPage()" />
   }
   @case ('allowed') {
     <router-outlet />
