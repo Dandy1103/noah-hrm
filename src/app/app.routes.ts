@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
-import { DutyPageComponent } from './pages/duty/duty-page.component';
-import { EmployeesComponent } from './pages/employees/employees.component';
-import { OrganizationComponent } from './pages/organization/organization.component';
+import { DutyPageComponent } from './pages/duty/duty-page/duty-page.component';
+import { EmployeesComponent } from './pages/employees/employees/employees.component';
+import { OrganizationComponent } from './pages/organization/organization/organization.component';
 import { requireSession } from './require-session';
 
 const dutyRoutes = ['attendance', 'leave', 'overtime', 'trip'].flatMap((kind) => [

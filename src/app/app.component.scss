@@ -2,171 +2,32 @@
   display: block;
 }
 
-.app {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  min-width: 0;
-  min-height: calc(100dvh - var(--header-height));
+.panel {
+  margin: 0 0 16px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: white;
 }
 
-.shell {
-  display: flex;
-  align-items: stretch;
-  min-width: 0;
-  min-height: 0;
+.status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-success-soft);
+  color: var(--color-success-strong);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
-.workspace {
-  flex: 1;
-  min-width: 0;
-}
-
-.access-mask {
-  position: fixed;
-  z-index: 40;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: var(--color-shadow-strong);
-}
-
-.access-dialog {
-  width: min(420px, calc(100vw - 48px));
-  padding: 24px;
-  border-radius: 12px;
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-md);
-}
-
-.access-dialog h2 {
-  margin: 0 0 8px;
-  font-size: 20px;
-}
-
-.access-dialog p {
-  margin: 0 0 20px;
-  color: var(--color-text-primary);
-  font-size: 16px;
-}
-
-.access-dialog__actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.employee-dialog__error {
-  margin: 12px 16px 0;
-  color: var(--color-danger-strong);
-  font-size: 14px;
-}
-
-.employee-dialog__form { margin: 0; }
-
-:host ::ng-deep noah-dialog.employee-create-dialog .noah-dialog--large {
-  width: min(50vw, 640px);
-}
-
-.employee-dialog__body {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.employee-dialog__body > noah-field {
-  grid-column: span 6;
-  min-width: 0;
-}
-
-.employee-dialog__actions {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.access-loading {
-  display: grid;
-  place-items: center;
-  min-height: 40vh;
+.status--off {
+  background: var(--color-surface-hover);
   color: var(--color-text-secondary);
 }
 
-.gate {
-  width: min(100%, 720px);
-  margin: 0 auto;
-  padding: 32px 24px 48px;
-}
-
-h1 {
-  margin: 0;
-  font-size: 18px;
+.text-link {
+  color: var(--color-primary);
   font-weight: 600;
-}
-
-.page-head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.page-head p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 16px;
-}
-
-.page-heading-details {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: -16px 0 16px;
-  padding-left: 16px;
-  color: var(--color-text-secondary);
-}
-
-.page-heading-details p {
-  margin: 0;
-}
-
-.roster-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.roster-bar--search {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.roster-bar--search > app-select-field,
-.roster-bar--search > .roster-bar__search {
-  grid-column: span 3;
-  min-width: 0;
-  width: 100%;
-}
-
-.roster-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin: -4px 0 12px;
-}
-
-.roster-actions > noah-button {
-  display: block;
-  width: 120px;
-}
-
-:host ::ng-deep .roster-actions > noah-button .noah-button {
-  width: 100%;
-  height: 40px;
-}
-
-.record {
-  max-width: 880px;
 }
 
 .person-link {
@@ -191,34 +52,6 @@ h1 {
   color: var(--color-text-secondary);
   font-size: 16px;
   font-weight: 400;
-}
-
-.file-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.file-head .roster-head {
-  margin-bottom: 0;
-}
-
-.file-actions {
-  gap: 8px;
-}
-
-.file-section {
-  margin: 20px 0 8px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.file-note {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 16px;
 }
 
 .file-table {
@@ -246,149 +79,4 @@ h1 {
 
 .file-table--list th {
   width: auto;
-}
-
-.toolbar,
-.actions {
-  align-items: end;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.toolbar {
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 16px;
-}
-
-.bar-search {
-  width: min(280px, 40vw);
-}
-
-.search {
-  align-items: end;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.panel {
-  margin: 0 0 16px;
-  padding: 20px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: white;
-}
-
-.panel h2 {
-  margin: 0 0 16px;
-  font-size: 20px;
-}
-
-.panel p {
-  margin: 0 0 12px;
-}
-
-.editor {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.editor > .actions,
-.editor > p {
-  grid-column: 1 / -1;
-}
-
-.error {
-  margin: 0 0 12px;
-  color: var(--color-danger-strong);
-  font-size: 16px;
-}
-
-.hint {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 16px;
-}
-
-.empty {
-  margin: 0;
-  padding: 32px 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: white;
-  color: var(--color-text-secondary);
-  text-align: center;
-}
-
-.status {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-success-soft);
-  color: var(--color-success-strong);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.status--off {
-  background: var(--color-surface-hover);
-  color: var(--color-text-secondary);
-}
-
-.text-link {
-  color: var(--color-primary);
-  font-weight: 600;
-}
-
-.org-name {
-  display: inline-block;
-}
-
-.pagination {
-  margin-top: 16px;
-}
-
-:focus-visible:not(input.noah-input) {
-  outline: 2px solid var(--color-link);
-  outline-offset: 2px;
-}
-
-@media (max-width: 720px) {
-  .shell {
-    flex-direction: column;
-  }
-
-  .workspace,
-  .gate {
-    padding: 24px 16px 32px;
-  }
-
-  .editor,
-  .facts {
-    grid-template-columns: 1fr;
-  }
-
-  .employee-dialog__body > noah-field {
-    grid-column: 1 / -1;
-  }
-
-  :host ::ng-deep noah-dialog.employee-create-dialog .noah-dialog--large {
-    width: 100%;
-  }
-
-  .roster-bar {
-    flex-wrap: wrap;
-  }
-
-  .roster-bar--search > app-select-field,
-  .roster-bar--search > .roster-bar__search {
-    grid-column: span 6;
-  }
-}
-
-@media (max-width: 420px) {
-  .roster-bar--search > app-select-field,
-  .roster-bar--search > .roster-bar__search {
-    grid-column: 1 / -1;
-  }
 }

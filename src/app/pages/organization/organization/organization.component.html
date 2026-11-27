@@ -1,27 +1,21 @@
-<main class="workspace">
-        @if (screen.error() && screen.editor() !== 'create') { <p class="error" role="alert">{{ screen.error() }}</p> }
+<main>
+        @if (screen.error()) { <p class="error" role="alert">{{ screen.error() }}</p> }
         @if (screen.peopleError()) {
           <p class="error" role="alert">{{ screen.peopleError() }}</p>
         }
 
           <noah-page-heading title="組織架構" [breadcrumbs]="screen.breadcrumbs()" />
-          <div class="roster-bar">
+          <div class="u-flex u-items-center u-gap-sm u-mb-md">
             <noah-button type="button" message="新增部門" (click)="screen.openDepartmentEditor()" [disabled]="screen.saving()"></noah-button>
           </div>
           @if (screen.departmentEditor(); as edit) {
-            <section class="panel record">
+            <section class="panel u-max-w-form">
               <h2>{{ edit === 'create' ? '新增部門' : '修改部門' }}</h2>
-              <form class="editor u-grid" [formGroup]="screen.departmentForm" (ngSubmit)="screen.saveDepartment()">
-                <noah-field>部門名稱
-                  <input noahInput formControlName="name" maxlength="100" required>
-                </noah-field>
-                <noah-field>上層部門
-                  <app-select-field formControlName="parentDepartmentId" [options]="screen.parentDepartmentSelectOptions()" />
-                </noah-field>
-                <noah-field>部門主管
-                  <app-select-field formControlName="headEmployeeNumber" [options]="screen.departmentHeadSelectOptions()" />
-                </noah-field>
-                <div class="actions u-flex">
+              <form class="u-form-grid" [formGroup]="screen.departmentForm" (ngSubmit)="screen.saveDepartment()">
+                <noah-input label="部門名稱" formControlName="name" maxlength="100" required />
+                <noah-select label="上層部門" formControlName="parentDepartmentId" [options]="screen.parentDepartmentSelectOptions()" />
+                <noah-select label="部門主管" formControlName="headEmployeeNumber" [options]="screen.departmentHeadSelectOptions()" />
+                <div class="u-col-span-full u-flex u-flex-wrap u-gap-sm">
                   <noah-button type="submit" [message]="screen.saving() ? '儲存中…' : '儲存'" [disabled]="screen.departmentForm.invalid || screen.saving()"></noah-button>
                   <noah-button type="button" variant="secondary" message="取消" (click)="screen.closeDepartmentEditor()" [disabled]="screen.saving()"></noah-button>
                 </div>
@@ -29,10 +23,10 @@
             </section>
           }
           @if (screen.deleteDepartmentTarget(); as department) {
-            <section class="panel record">
+            <section class="panel u-max-w-form">
               <h2>刪除 {{ department.name }}？</h2>
               <p>刪除後無法復原。仍有員工或下層部門時不能刪。</p>
-              <div class="actions u-flex">
+              <div class="u-flex u-flex-wrap u-gap-sm">
                 <noah-button type="button" variant="danger" message="確認刪除" (click)="screen.deleteDepartment()" [disabled]="screen.saving()"></noah-button>
                 <noah-button type="button" variant="secondary" message="取消" (click)="screen.deleteDepartmentTarget.set(null)" [disabled]="screen.saving()"></noah-button>
               </div>
@@ -58,11 +52,11 @@
                 <tbody>
                   @for (row of screen.organizationRows(); track row.department.departmentId) {
                     <tr>
-                      <td><span class="org-name" [style.margin-left.px]="row.depth * 20">{{ row.department.name }}</span></td>
+                      <td><span [style.margin-left.px]="row.depth * 20">{{ row.department.name }}</span></td>
                       <td>{{ row.department.headName || '—' }}</td>
                       <td>{{ row.department.employeeCount }}</td>
                       <td>
-                        <div class="actions u-flex">
+                        <div class="u-flex u-flex-wrap u-gap-sm">
                           <noah-button type="button" variant="secondary" message="修改" (click)="screen.openDepartmentEditor(row.department)" [disabled]="screen.saving()"></noah-button>
                           @if (screen.canDeleteDepartment(row.department)) {
                             <noah-button type="button" variant="secondary" message="刪除" (click)="screen.confirmDeleteDepartment(row.department)" [disabled]="screen.saving()"></noah-button>

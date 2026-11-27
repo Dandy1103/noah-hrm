@@ -1,0 +1,12 @@
+@if (screen.restoreTarget(); as employee) {
+  <noah-dialog [open]="true" mode="content" eyebrow="人資管理" title="恢復登入帳號" [closeOnBackdrop]="!screen.saving()" (closed)="screen.closeRestore()">
+    <p>會保留 {{ employee.displayName }} 的員工資料，重設登入初始密碼並重新啟用帳號；若原帳號不存在，才會建立新帳號。</p>
+    @if (screen.error()) { <p class="error" role="alert">{{ screen.error() }}</p> }
+    <form id="restore-employee-form" class="u-form-grid" [formGroup]="screen.restoreForm" (ngSubmit)="screen.confirmRestore()">
+      <noah-input label="身分證字號" formControlName="nationalId" maxlength="10" autocomplete="off" [spellcheck]="false" required />
+      <noah-input label="新登入初始密碼" type="password" formControlName="initialPassword" autocomplete="new-password" minlength="12" maxlength="128" required hint="至少 12 個字元，首次登入時需更改。" />
+    </form>
+    <noah-button noahDialogActions type="button" message="恢復登入帳號" (click)="screen.confirmRestore()" [disabled]="screen.restoreForm.invalid || screen.saving()"></noah-button>
+    <noah-button noahDialogActions type="button" variant="secondary" message="取消" (click)="screen.closeRestore()" [disabled]="screen.saving()"></noah-button>
+  </noah-dialog>
+}

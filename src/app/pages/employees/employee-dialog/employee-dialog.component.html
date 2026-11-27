@@ -1,0 +1,40 @@
+@if (screen.editingEmployee(); as edit) {
+  <noah-dialog [open]="true" mode="content" eyebrow="人資管理" title="修改員工" size="medium" [closeOnBackdrop]="!screen.saving()" (closed)="screen.closeEditor()">
+    @if (screen.error()) { <p class="error" role="alert">{{ screen.error() }}</p> }
+    <form id="employee-form" class="u-form-grid" [formGroup]="screen.form" (ngSubmit)="screen.save()">
+      <noah-input label="員工編號" formControlName="employeeNumber" maxlength="32" autocomplete="off" required />
+      @if (edit.managed) {
+        <noah-input label="新身分證字號" formControlName="nationalId" maxlength="10" autocomplete="off" [spellcheck]="false" [hint]="screen.form.controls.nationalId.touched && screen.form.controls.nationalId.hasError('pattern') ? '請輸入 1 個英文字母和 9 個數字。' : '留空會沿用原本的登入帳號。'" />
+      }
+      <noah-select label="部門" formControlName="departmentId" emptyLabel="選擇部門" [options]="screen.departmentSelectOptions()" />
+      <noah-select label="職稱" formControlName="jobTitle" emptyLabel="選擇職稱" [options]="screen.jobTitleSelectOptions()" />
+      <noah-date-picker label="到職日" formControlName="hiredOn" />
+      <noah-date-picker label="生日" formControlName="bornOn" />
+      <noah-select label="雇用型態" formControlName="employmentType" emptyLabel="選擇雇用型態" [options]="screen.employmentTypes" />
+      <noah-select label="權限" formControlName="role" [options]="screen.roles" />
+      <noah-select label="直屬主管" formControlName="managerEmployeeNumber" [options]="screen.managerSelectOptions()" />
+      <noah-input label="姓名" formControlName="name" maxlength="100" required />
+      <noah-input label="電子郵件" type="email" formControlName="email" maxlength="254" required />
+    </form>
+    <noah-button noahDialogActions type="button" variant="primary" [message]="screen.saving() ? '儲存中…' : '儲存'" (click)="screen.save()" [disabled]="screen.form.invalid || screen.saving()"></noah-button>
+    <noah-button noahDialogActions type="button" variant="secondary" message="取消" (click)="screen.closeEditor()" [disabled]="screen.saving()"></noah-button>
+  </noah-dialog>
+} @else {
+  <noah-dialog [open]="true" mode="content" eyebrow="人資管理" title="新增員工" size="medium" [closeOnBackdrop]="!screen.saving()" (closed)="screen.closeEditor()">
+    @if (screen.error()) { <p class="error" role="alert">{{ screen.error() }}</p> }
+    <form id="employee-form" class="u-form-grid" [formGroup]="screen.form" (ngSubmit)="screen.save()">
+      <noah-input label="員工編號" [value]="screen.nextEmployeeNumber() || (screen.nextEmployeeNumberError() ? '讀取失敗' : '讀取中…')" readonly [hint]="screen.nextEmployeeNumberError() ? '無法讀取員工編號，請關閉後重新開啟表單。' : ''" />
+      <noah-input label="身分證字號" formControlName="nationalId" maxlength="10" autocomplete="off" [spellcheck]="false" required [hint]="screen.form.controls.nationalId.touched && screen.form.controls.nationalId.hasError('pattern') ? '請輸入 1 個英文字母和 9 個數字。' : ''" />
+      <noah-select label="部門" formControlName="departmentId" emptyLabel="選擇部門" [options]="screen.departmentSelectOptions()" />
+      <noah-select label="職稱" formControlName="jobTitle" emptyLabel="選擇職稱" [options]="screen.jobTitleSelectOptions()" />
+      <noah-date-picker label="到職日" formControlName="hiredOn" />
+      <noah-date-picker label="生日" formControlName="bornOn" />
+      <noah-select label="雇用型態" formControlName="employmentType" emptyLabel="選擇雇用型態" [options]="screen.employmentTypes" />
+      <noah-select label="直屬主管" formControlName="managerEmployeeNumber" [options]="screen.managerSelectOptions()" />
+      <noah-input label="姓名" formControlName="name" maxlength="100" required />
+      <noah-input label="電子郵件" type="email" formControlName="email" maxlength="254" required />
+    </form>
+    <noah-button noahDialogActions type="button" variant="primary" [message]="screen.saving() ? '儲存中…' : '儲存'" (click)="screen.save()" [disabled]="screen.form.invalid || screen.saving() || !screen.nextEmployeeNumber()"></noah-button>
+    <noah-button noahDialogActions type="button" variant="secondary" message="取消" (click)="screen.closeEditor()" [disabled]="screen.saving()"></noah-button>
+  </noah-dialog>
+}

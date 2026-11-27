@@ -1,0 +1,9 @@
+<main>
+  @if (peopleError()) {
+    <p class="error" role="alert">{{ peopleError() }}</p>
+  }
+  <noah-page-heading [title]="title" [breadcrumbs]="breadcrumbs()">
+    @if (count() !== null) { <p>{{ count() }} 筆</p> }
+  </noah-page-heading>
+  <app-duty-board [kind]="kind" [people]="people()" [routeView]="routeView" [routeId]="routeId" (editing)="editing.set($event)" (recordCount)="count.set($event)" />
+</main>
