@@ -25,6 +25,8 @@ HRM 前端不直接連 Keycloak 或資料庫。登入與 API 由 `noah-core` 提
 
 ## 上線
 
-HRM 沒有自己的網站服務。推上 `develop` 或 `main` 後，`.github/workflows/publish-platform.yml` 會編譯前端，發布 `platform-<branch>-<commit>` 成品。`develop` 還會通知 `noah-platform` 更新該頻道。Platform 把成品放到 `/remotes/hrm/`，使用者從 Shell 的 `/hrm` 進入。
+HRM 的 PR 以 `master` 為目標，CI 會驗證前端建置。合併到 `master` 後，GitHub Actions 會將成品發佈到 GHCR，再通知 `noah-platform` 更新開發環境的 lock。Railway 由 Platform 的 `master` 部署整站，使用者從 Shell 的 `/hrm` 進入。
+
+日常發佈不建立 HRM Git tag。整站驗收後，需要標記版本時，在 `noah-platform` 手動建立版本 tag。
 
 登入、資料庫和員工帳號的環境變數在 `noah-core`。Platform 的組裝與 Railway 變數看 [noah-platform](https://github.com/Dandy1103/noah-platform)。本機說明在 [docs/deployment.md](docs/deployment.md)，GitHub Packages 金鑰在 [docs/github-packages.md](docs/github-packages.md)。
