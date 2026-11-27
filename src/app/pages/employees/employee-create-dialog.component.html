@@ -1,0 +1,46 @@
+<noah-dialog class="employee-create-dialog" [open]="true" mode="content" eyebrow="人資管理" title="新增員工" size="large" [closeOnBackdrop]="!screen.saving()" (closed)="screen.closeEditor()">
+  @if (screen.error()) { <p class="employee-dialog__error" role="alert">{{ screen.error() }}</p> }
+  <form id="employee-form" class="employee-dialog__form" [formGroup]="screen.form" (ngSubmit)="screen.save()">
+    <div class="employee-dialog__body u-grid">
+      <noah-field>員工編號
+        <input noahInput [value]="screen.nextEmployeeNumber() || (screen.nextEmployeeNumberError() ? '讀取失敗' : '讀取中…')" readonly aria-readonly="true">
+        @if (screen.nextEmployeeNumberError()) { <span class="hint">無法讀取員工編號，請關閉後重新開啟表單。</span> }
+      </noah-field>
+      <noah-field>身分證字號
+        <input noahInput formControlName="nationalId" maxlength="10" autocomplete="off" spellcheck="false" required>
+        @if (screen.form.controls.nationalId.touched && screen.form.controls.nationalId.hasError('pattern')) {
+          <span class="hint">請輸入 1 個英文字母和 9 個數字。</span>
+        }
+      </noah-field>
+      <noah-field>部門
+        <app-select-field formControlName="departmentId" emptyLabel="選擇部門" [options]="screen.departmentSelectOptions()" />
+      </noah-field>
+      <noah-field>職稱
+        <app-select-field formControlName="jobTitle" emptyLabel="選擇職稱" [options]="screen.jobTitleSelectOptions()" />
+      </noah-field>
+      <noah-field>到職日
+        <noah-date-picker formControlName="hiredOn"></noah-date-picker>
+        @if (screen.form.controls.hiredOn.value) { <span class="hint">年資 {{ screen.tenureLabel(screen.form.controls.hiredOn.value) }}</span> }
+      </noah-field>
+      <noah-field>生日
+        <noah-date-picker formControlName="bornOn"></noah-date-picker>
+      </noah-field>
+      <noah-field>雇用型態
+        <app-select-field formControlName="employmentType" emptyLabel="選擇雇用型態" [options]="screen.employmentTypes" />
+      </noah-field>
+      <noah-field>直屬主管
+        <app-select-field formControlName="managerEmployeeNumber" [options]="screen.managerSelectOptions()" />
+      </noah-field>
+      <noah-field>姓名
+        <input noahInput formControlName="name" maxlength="100" required>
+      </noah-field>
+      <noah-field>電子郵件
+        <input noahInput formControlName="email" type="email" maxlength="254" required>
+      </noah-field>
+    </div>
+  </form>
+  <div noahDialogActions class="employee-dialog__actions">
+    <noah-button type="button" variant="primary" [message]="screen.saving() ? '儲存中…' : '儲存'" (click)="screen.save()" [disabled]="screen.form.invalid || screen.saving() || !screen.nextEmployeeNumber()"></noah-button>
+    <noah-button type="button" variant="secondary" message="取消" (click)="screen.closeEditor()" [disabled]="screen.saving()"></noah-button>
+  </div>
+</noah-dialog>

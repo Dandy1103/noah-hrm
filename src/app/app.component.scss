@@ -1,7 +1,3 @@
-router-outlet {
-  display: none;
-}
-
 :host {
   display: block;
 }
@@ -76,7 +72,7 @@ router-outlet {
   gap: 16px;
 }
 
-.employee-dialog__body > app-field {
+.employee-dialog__body > noah-field {
   grid-column: span 6;
   min-width: 0;
 }
@@ -372,7 +368,7 @@ h1 {
     grid-template-columns: 1fr;
   }
 
-  .employee-dialog__body > app-field {
+  .employee-dialog__body > noah-field {
     grid-column: 1 / -1;
   }
 

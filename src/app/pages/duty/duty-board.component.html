@@ -13,67 +13,67 @@
   <section class="panel record">
     <h2>{{ edit === 'create' ? '新增' : '修改' }}{{ title() }}</h2>
     <form class="editor u-grid" [formGroup]="form" (ngSubmit)="save()">
-      <app-field>員工
+      <noah-field>員工
         <app-select-field formControlName="employeeNumber" [options]="staffSelectOptions()" />
-      </app-field>
+      </noah-field>
 
       @switch (kind) {
         @case ('attendance') {
-          <app-field>日期
+          <noah-field>日期
             <noah-date-picker formControlName="workDate"></noah-date-picker>
             <span class="hint">同一天一位員工只記一筆。</span>
-          </app-field>
-          <app-field>上班
+          </noah-field>
+          <noah-field>上班
             <input noahInput formControlName="clockIn" type="time" step="60">
-          </app-field>
-          <app-field>下班
+          </noah-field>
+          <noah-field>下班
             <input noahInput formControlName="clockOut" type="time" step="60">
-          </app-field>
-          <app-field>備註
+          </noah-field>
+          <noah-field>備註
             <input noahInput formControlName="note" maxlength="200" autocomplete="off">
-          </app-field>
+          </noah-field>
         }
         @case ('leave') {
-          <app-field>假別
+          <noah-field>假別
             <app-select-field formControlName="leaveType" [options]="leaveTypes" />
-          </app-field>
-          <app-field>開始
+          </noah-field>
+          <noah-field>開始
             <noah-date-picker formControlName="startsOn"></noah-date-picker>
-          </app-field>
-          <app-field>結束
+          </noah-field>
+          <noah-field>結束
             <noah-date-picker formControlName="endsOn"></noah-date-picker>
-          </app-field>
-          <app-field>備註
+          </noah-field>
+          <noah-field>備註
             <input noahInput formControlName="note" maxlength="200" autocomplete="off">
-          </app-field>
+          </noah-field>
         }
         @case ('overtime') {
-          <app-field>日期
+          <noah-field>日期
             <noah-date-picker formControlName="workDate"></noah-date-picker>
-          </app-field>
-          <app-field>開始
+          </noah-field>
+          <noah-field>開始
             <input noahInput formControlName="startsAt" type="time" step="60" required>
-          </app-field>
-          <app-field>結束
+          </noah-field>
+          <noah-field>結束
             <input noahInput formControlName="endsAt" type="time" step="60" required>
-          </app-field>
-          <app-field>事由
+          </noah-field>
+          <noah-field>事由
             <input noahInput formControlName="reason" maxlength="200" autocomplete="off" required>
-          </app-field>
+          </noah-field>
         }
         @case ('trip') {
-          <app-field>地點
+          <noah-field>地點
             <input noahInput formControlName="place" maxlength="100" autocomplete="off" required>
-          </app-field>
-          <app-field>開始
+          </noah-field>
+          <noah-field>開始
             <noah-date-picker formControlName="startsOn"></noah-date-picker>
-          </app-field>
-          <app-field>結束
+          </noah-field>
+          <noah-field>結束
             <noah-date-picker formControlName="endsOn"></noah-date-picker>
-          </app-field>
-          <app-field>事由
+          </noah-field>
+          <noah-field>事由
             <input noahInput formControlName="reason" maxlength="200" autocomplete="off" required>
-          </app-field>
+          </noah-field>
         }
       }
 
