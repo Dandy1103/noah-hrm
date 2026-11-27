@@ -51,4 +51,4 @@ npm install
 npm install @dandy1103/ui@0.1.4
 ```
 
-Railway 建置也會讀 `NODE_AUTH_TOKEN`。到 HRM 服務的 **Variables** 加同一筆，值用這支金鑰。不要把金鑰寫進 Dockerfile。
+GitHub Actions 安裝套件時使用該 repository 的 `GITHUB_TOKEN`。這把個人金鑰只留在這台電腦，不要寫進 Git，也不要放到 Railway。
